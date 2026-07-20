@@ -23,6 +23,8 @@ Required for:
 
 - `POST /api/v1/events/{event_id}/acknowledge`
 
+**Browser clients must not send this header.** The React kiosk UI calls a trusted server-side proxy or BFF; the proxy reads `CABLEGUARD_KIOSK_API_KEY` from server configuration and adds `X-Kiosk-Key` when forwarding to Event Core. The key must not use a `VITE_` prefix or appear in the JavaScript bundle, `localStorage`, or `sessionStorage`. See `docs/integration-with-ui.md`.
+
 `acknowledged_by` and `kiosk_id` in the JSON body are **audit metadata only**. They are not cryptographically verified identities yet.
 
 ### Local read access
@@ -39,7 +41,7 @@ Required for:
 | POST | `/api/v1/events` | Idempotent on `event_id` (see below) |
 | GET | `/api/v1/events` | Filters: site_id, station_id, event_type, status, service_id; pagination limit/offset |
 | GET | `/api/v1/events/{event_id}` | Detail |
-| POST | `/api/v1/events/{event_id}/acknowledge` | Requires `X-Kiosk-Key`; see acknowledgement rules |
+| POST | `/api/v1/events/{event_id}/acknowledge` | Requires server-injected `X-Kiosk-Key`; see acknowledgement rules |
 | POST | `/api/v1/heartbeats` | Upsert service_health; history only on status change |
 | WS | `/ws/v1` | See `contracts/websocket-events.md` |
 
