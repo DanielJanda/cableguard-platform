@@ -1,0 +1,18 @@
+{
+  "event_id": "11111111-1111-4111-8111-111111111111",
+  "event_type": "fall_risk_detected",
+  "severity": "alarm",
+  "site_id": "zahradky",
+  "station_id": "horni_stanice",
+  "camera_id": "kamera4",
+  "service_id": "zahradky-horni-pad-detector",
+  "created_at": "2026-07-20T12:00:00+00:00",
+  "risk_score": 0.75,
+  "algorithm_version": "zahradky-fall-v1",
+  "model_sha256": "29B17EAF…",
+  "config_sha256": "deadbeef…",
+  "payload_json": {
+    "track_id": 3,
+    "leg_angle": 18.4
+  }
+}

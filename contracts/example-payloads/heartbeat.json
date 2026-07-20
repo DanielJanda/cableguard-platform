@@ -1,0 +1,11 @@
+{
+  "service_id": "zahradky-horni-pad-detector",
+  "site_id": "zahradky",
+  "station_id": "horni_stanice",
+  "service_type": "fall_detector",
+  "status": "healthy",
+  "camera_connected": true,
+  "inference_running": true,
+  "relay_connected": null,
+  "sent_at": "2026-07-20T12:00:00+00:00"
+}
