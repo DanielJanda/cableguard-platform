@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
+
+from app.core.datetime_utils import serialize_utc_datetime
 
 
 class AcknowledgementCreate(BaseModel):
@@ -20,3 +22,7 @@ class AcknowledgementRead(BaseModel):
     note: str | None
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("acknowledged_at")
+    def serialize_acknowledged_at(self, value: datetime) -> str:
+        return serialize_utc_datetime(value) or ""

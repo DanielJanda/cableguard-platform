@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -70,11 +70,20 @@ class ServiceStatusHistory(Base):
 
 class Acknowledgement(Base):
     __tablename__ = "acknowledgements"
-    __table_args__ = (UniqueConstraint("acknowledgement_id", name="uq_ack_id"),)
+    __table_args__ = (
+        UniqueConstraint("acknowledgement_id", name="uq_ack_id"),
+        UniqueConstraint("event_id", name="uq_ack_event_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     acknowledgement_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    event_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    event_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("events.event_id"),
+        index=True,
+        nullable=False,
+        unique=True,
+    )
     acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     acknowledged_by: Mapped[str] = mapped_column(String(128), nullable=False)
     kiosk_id: Mapped[str] = mapped_column(String(128), nullable=False)

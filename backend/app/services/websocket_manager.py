@@ -8,6 +8,8 @@ from typing import Any
 from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 
+from app.core.datetime_utils import serialize_utc_datetime
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +46,7 @@ class WebSocketManager:
         return {
             "type": msg_type,
             "data": data,
-            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "sent_at": serialize_utc_datetime(datetime.now(timezone.utc)) or "",
         }
 
 

@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.datetime_utils import ensure_utc, serialize_utc_datetime
 from app.db.models import ServiceHealth, ServiceStatusHistory
 from app.schemas.health import HeartbeatCreate
 from app.services.websocket_manager import ws_manager
@@ -16,69 +18,70 @@ def _utcnow() -> datetime:
 
 def upsert_heartbeat(db: Session, body: HeartbeatCreate) -> tuple[ServiceHealth, bool]:
     """Update service_health. Returns (row, status_changed)."""
-    now = body.sent_at or _utcnow()
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+    now = ensure_utc(body.sent_at) if body.sent_at else _utcnow()
 
     row = db.get(ServiceHealth, body.service_id)
-    previous = row.status if row else None
     status_changed = False
 
-    if row is None:
-        row = ServiceHealth(
-            service_id=body.service_id,
-            site_id=body.site_id,
-            station_id=body.station_id,
-            service_type=body.service_type,
-            status=body.status,
-            last_heartbeat_at=now,
-            camera_connected=body.camera_connected,
-            inference_running=body.inference_running,
-            relay_connected=body.relay_connected,
-            last_error=body.last_error,
-            details_json=body.details_json,
-            updated_at=now,
-        )
-        db.add(row)
-        status_changed = True
-        db.add(
-            ServiceStatusHistory(
+    try:
+        if row is None:
+            row = ServiceHealth(
                 service_id=body.service_id,
                 site_id=body.site_id,
-                from_status=None,
-                to_status=body.status,
-                changed_at=now,
-                reason="first_heartbeat",
+                station_id=body.station_id,
+                service_type=body.service_type,
+                status=body.status,
+                last_heartbeat_at=now,
+                camera_connected=body.camera_connected,
+                inference_running=body.inference_running,
+                relay_connected=body.relay_connected,
+                last_error=body.last_error,
+                details_json=body.details_json,
+                updated_at=now,
             )
-        )
-    else:
-        if row.status != body.status:
+            db.add(row)
             status_changed = True
             db.add(
                 ServiceStatusHistory(
                     service_id=body.service_id,
                     site_id=body.site_id,
-                    from_status=row.status,
+                    from_status=None,
                     to_status=body.status,
                     changed_at=now,
-                    reason="heartbeat_status_change",
+                    reason="first_heartbeat",
                 )
             )
-        row.site_id = body.site_id
-        row.station_id = body.station_id
-        row.service_type = body.service_type
-        row.status = body.status
-        row.last_heartbeat_at = now
-        row.camera_connected = body.camera_connected
-        row.inference_running = body.inference_running
-        row.relay_connected = body.relay_connected
-        row.last_error = body.last_error
-        row.details_json = body.details_json
-        row.updated_at = now
+        else:
+            if row.status != body.status:
+                status_changed = True
+                db.add(
+                    ServiceStatusHistory(
+                        service_id=body.service_id,
+                        site_id=body.site_id,
+                        from_status=row.status,
+                        to_status=body.status,
+                        changed_at=now,
+                        reason="heartbeat_status_change",
+                    )
+                )
+            row.site_id = body.site_id
+            row.station_id = body.station_id
+            row.service_type = body.service_type
+            row.status = body.status
+            row.last_heartbeat_at = now
+            row.camera_connected = body.camera_connected
+            row.inference_running = body.inference_running
+            row.relay_connected = body.relay_connected
+            row.last_error = body.last_error
+            row.details_json = body.details_json
+            row.updated_at = now
 
-    db.commit()
-    db.refresh(row)
-    return row, status_changed
+        db.commit()
+        db.refresh(row)
+        return row, status_changed
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def mark_offline_if_stale(
@@ -92,9 +95,7 @@ def mark_offline_if_stale(
             continue
         if row.last_heartbeat_at is None:
             continue
-        last = row.last_heartbeat_at
-        if last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
+        last = ensure_utc(row.last_heartbeat_at)
         age = (now - last).total_seconds()
         if age > timeout_sec:
             previous = row.status
@@ -111,11 +112,16 @@ def mark_offline_if_stale(
                 )
             )
             changed.append(row)
-    if changed:
+    if not changed:
+        return changed
+    try:
         db.commit()
         for row in changed:
             db.refresh(row)
-    return changed
+        return changed
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def list_services(db: Session) -> list[ServiceHealth]:
@@ -147,9 +153,7 @@ async def publish_service_update(row: ServiceHealth, *, offline: bool = False) -
                 "station_id": row.station_id,
                 "service_type": row.service_type,
                 "status": row.status,
-                "last_heartbeat_at": row.last_heartbeat_at.isoformat()
-                if row.last_heartbeat_at
-                else None,
+                "last_heartbeat_at": serialize_utc_datetime(row.last_heartbeat_at),
             },
         )
     )

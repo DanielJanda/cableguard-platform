@@ -28,6 +28,8 @@ Cameras → MediaMTX → WHEP → UI VideoPlayer (not via Event Core)
 - Event Core / frontend **must not** drive USB-4761 or the physical semaphore.
 - UI never opens SQLite, RTSP, or USB directly.
 - Ingest uses a **service API key** (`X-API-Key`). Do not log its value.
+- Acknowledgements use a separate **kiosk API key** (`X-Kiosk-Key`) injected by a server-side proxy/BFF — never by the React browser client.
+- `GET` and WebSocket are for trusted local use only until operator auth or a trusted proxy is added.
 - Before exposing to the public internet: add operator authentication or a trusted reverse proxy.
 
 ## Components

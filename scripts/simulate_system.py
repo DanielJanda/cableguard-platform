@@ -73,6 +73,10 @@ def headers(api_key: str) -> dict[str, str]:
     return {"X-API-Key": api_key, "Content-Type": "application/json"}
 
 
+def kiosk_headers(kiosk_key: str) -> dict[str, str]:
+    return {"X-Kiosk-Key": kiosk_key, "Content-Type": "application/json"}
+
+
 def send_heartbeat(client: httpx.Client, base: str, api_key: str, svc: dict, status: str = "healthy") -> None:
     body = {
         "service_id": svc["service_id"],
@@ -109,6 +113,8 @@ def send_event(client: httpx.Client, base: str, api_key: str, event_type: str, e
         "service_id": service_id,
         "created_at": utcnow_iso(),
         "risk_score": risk,
+        "snapshot_url": None,
+        "clip_url": None,
         "algorithm_version": "zahradky-fall-v1" if event_type.startswith("fall") else None,
         "payload_json": {"simulated": True},
     }
@@ -133,6 +139,7 @@ def main() -> int:
     args = p.parse_args()
 
     api_key = args.api_key
+    kiosk_key = None
     if not api_key:
         import os
         from pathlib import Path
@@ -141,6 +148,11 @@ def main() -> int:
 
         load_dotenv(Path(__file__).resolve().parents[1] / ".env")
         api_key = os.environ.get("CABLEGUARD_INGEST_API_KEY", "change-me-local-dev-key")
+        kiosk_key = os.environ.get("CABLEGUARD_KIOSK_API_KEY", "change-me-local-kiosk-key")
+    else:
+        import os
+
+        kiosk_key = os.environ.get("CABLEGUARD_KIOSK_API_KEY", "change-me-local-kiosk-key")
 
     base = args.base_url.rstrip("/")
     with httpx.Client(timeout=10.0) as client:
@@ -191,6 +203,7 @@ def main() -> int:
                 eid = items[0]["event_id"]
                 ar = client.post(
                     f"{base}/api/v1/events/{eid}/acknowledge",
+                    headers=kiosk_headers(kiosk_key),
                     json={"acknowledged_by": "sim-operator", "kiosk_id": "sim-kiosk", "note": "demo ack"},
                 )
                 ar.raise_for_status()

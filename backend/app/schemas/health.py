@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer, field_validator
+
+from app.core.datetime_utils import ensure_utc, serialize_utc_datetime
 
 ServiceStatus = Literal["healthy", "degraded", "offline"]
 
@@ -20,6 +22,13 @@ class HeartbeatCreate(BaseModel):
     last_error: str | None = None
     details_json: dict[str, Any] | None = None
     sent_at: datetime | None = None
+
+    @field_validator("sent_at")
+    @classmethod
+    def normalize_sent_at(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        return ensure_utc(value)
 
 
 class ServiceHealthRead(BaseModel):
@@ -38,6 +47,12 @@ class ServiceHealthRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("last_heartbeat_at", "updated_at")
+    def serialize_datetimes(self, value: datetime | None) -> str | None:
+        if value is None:
+            return None
+        return serialize_utc_datetime(value)
+
 
 class StatusHistoryRead(BaseModel):
     id: int
@@ -49,6 +64,10 @@ class StatusHistoryRead(BaseModel):
     reason: str | None
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("changed_at")
+    def serialize_changed_at(self, value: datetime) -> str:
+        return serialize_utc_datetime(value) or ""
 
 
 class SystemStatusResponse(BaseModel):
