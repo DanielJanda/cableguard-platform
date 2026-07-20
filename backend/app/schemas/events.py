@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer, field_validator
+
+from app.core.datetime_utils import ensure_utc, serialize_utc_datetime
+from app.core.media_urls import validate_media_url
 
 
 EventStatus = Literal["open", "acknowledged", "closed"]
@@ -27,6 +30,16 @@ class EventCreate(BaseModel):
     config_sha256: str | None = None
     payload_json: dict[str, Any] | None = None
 
+    @field_validator("created_at")
+    @classmethod
+    def normalize_created_at(cls, value: datetime) -> datetime:
+        return ensure_utc(value)
+
+    @field_validator("snapshot_url", "clip_url")
+    @classmethod
+    def validate_media_fields(cls, value: str | None) -> str | None:
+        return validate_media_url(value)
+
 
 class EventRead(BaseModel):
     event_id: str
@@ -48,6 +61,10 @@ class EventRead(BaseModel):
     payload_json: dict[str, Any] | None
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("created_at", "received_at")
+    def serialize_datetimes(self, value: datetime) -> str:
+        return serialize_utc_datetime(value) or ""
 
 
 class EventListResponse(BaseModel):

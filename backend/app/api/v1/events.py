@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.security import require_ingest_api_key
@@ -22,11 +22,16 @@ async def post_event(
     response: Response,
     db: Session = Depends(get_db),
 ) -> EventRead:
-    row, created = event_service.create_event(db, body)
-    if not created:
-        response.status_code = status.HTTP_200_OK
-    else:
+    row, outcome = event_service.create_event(db, body)
+    if outcome == "conflict":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Event ID already exists with a different payload",
+        )
+    if outcome == "created":
         await event_service.publish_event_created(row)
+    else:
+        response.status_code = status.HTTP_200_OK
     return EventRead.model_validate(row)
 
 
@@ -61,8 +66,6 @@ def get_events(
 
 @router.get("/events/{event_id}", response_model=EventRead)
 def get_event(event_id: str, db: Session = Depends(get_db)) -> EventRead:
-    from fastapi import HTTPException
-
     row = event_service.get_event(db, event_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Event not found")
