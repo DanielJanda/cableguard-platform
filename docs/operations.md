@@ -3,12 +3,12 @@
 ## Local start
 
 ```powershell
-cd C:\Users\mega\Documents\cableguard-platform
+cd <PROJECT_ROOT>
 py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 Copy-Item .env.example .env
-# edit CABLEGUARD_INGEST_API_KEY
+# edit CABLEGUARD_INGEST_API_KEY and CABLEGUARD_KIOSK_API_KEY
 
 .\scripts\reset_development_database.ps1
 .\scripts\start_backend.ps1
@@ -17,7 +17,7 @@ Copy-Item .env.example .env
 Simulator:
 
 ```powershell
-$env:PYTHONPATH = "C:\Users\mega\Documents\cableguard-platform\backend"
+$env:PYTHONPATH = "<PROJECT_ROOT>\backend"
 python scripts\simulate_system.py --scenario demo
 ```
 
@@ -28,6 +28,7 @@ python scripts\simulate_system.py --scenario demo
 ## Security notes
 
 - Never commit `.env` or the SQLite file.
-- Never log the ingest API key.
-- Operator login is **not** implemented yet. Do not expose this API on the public internet without auth or a trusted proxy.
-- Acknowledgements currently trust the client-supplied `acknowledged_by` / `kiosk_id`.
+- Never log ingest or kiosk API keys.
+- `GET` and WebSocket are for trusted local use only until operator auth or a trusted proxy is added.
+- Acknowledgements trust the client-supplied `acknowledged_by` / `kiosk_id` as audit metadata; cryptographic operator identity is **not** implemented yet.
+- Do not expose this API on the public internet without additional authentication.
