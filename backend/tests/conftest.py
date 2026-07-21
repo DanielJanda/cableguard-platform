@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
     db_path = tmp_path / "test.sqlite3"
+    monkeypatch.setenv("CABLEGUARD_ENV", "test")
     monkeypatch.setenv("CABLEGUARD_INGEST_API_KEY", "test-ingest-key")
     monkeypatch.setenv("CABLEGUARD_KIOSK_API_KEY", "test-kiosk-key")
     monkeypatch.setenv("CABLEGUARD_HEARTBEAT_TIMEOUT_SEC", "1")

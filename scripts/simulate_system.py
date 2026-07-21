@@ -16,6 +16,21 @@ import httpx
 
 DEFAULT_BASE = "http://127.0.0.1:8000"
 
+PLACEHOLDER_SECRETS = frozenset(
+    {"", "change-me-local-dev-key", "change-me-local-kiosk-key"},
+)
+
+
+def require_env_secret(name: str, value: str | None) -> str:
+    normalized = (value or "").strip()
+    if normalized in PLACEHOLDER_SECRETS:
+        print(
+            f"ERROR: {name} must be set to a unique non-placeholder value in .env",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    return normalized
+
 SERVICES = [
     {
         "service_id": "zahradky-horni-pad-detector",
@@ -147,12 +162,21 @@ def main() -> int:
         from dotenv import load_dotenv
 
         load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-        api_key = os.environ.get("CABLEGUARD_INGEST_API_KEY", "change-me-local-dev-key")
-        kiosk_key = os.environ.get("CABLEGUARD_KIOSK_API_KEY", "change-me-local-kiosk-key")
+        api_key = require_env_secret(
+            "CABLEGUARD_INGEST_API_KEY",
+            os.environ.get("CABLEGUARD_INGEST_API_KEY"),
+        )
+        kiosk_key = require_env_secret(
+            "CABLEGUARD_KIOSK_API_KEY",
+            os.environ.get("CABLEGUARD_KIOSK_API_KEY"),
+        )
     else:
         import os
 
-        kiosk_key = os.environ.get("CABLEGUARD_KIOSK_API_KEY", "change-me-local-kiosk-key")
+        kiosk_key = require_env_secret(
+            "CABLEGUARD_KIOSK_API_KEY",
+            os.environ.get("CABLEGUARD_KIOSK_API_KEY"),
+        )
 
     base = args.base_url.rstrip("/")
     with httpx.Client(timeout=10.0) as client:
