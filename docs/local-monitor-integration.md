@@ -19,8 +19,8 @@ Video (parallel, unchanged):
 
 - Python venv in `cableguard-platform` (`.venv`)
 - Node.js in PATH
-- `cableguard-platform/.env` with `CABLEGUARD_INGEST_API_KEY` and `CABLEGUARD_KIOSK_API_KEY`
-- `cableguard-monitor/.env.local` (gitignored) – see monitor `docs/local-integration.md`
+- `cableguard-platform/.env` with explicit non-placeholder `CABLEGUARD_INGEST_API_KEY` and `CABLEGUARD_KIOSK_API_KEY`
+- `cableguard-monitor/.env.local` (gitignored) – kiosk key must match platform `.env` (see below)
 - Optional: managed MediaMTX for live video (`scripts/start_mediamtx.ps1`)
 
 ## Quick start
@@ -83,11 +83,27 @@ Monitor dev server exposes:
 - Proxy forwards to: `POST http://127.0.0.1:8000/api/v1/events/{event_id}/acknowledge`
 - Server injects `X-Kiosk-Key` from `CABLEGUARD_KIOSK_API_KEY` (never in browser bundle)
 
+## Development database reset
+
+Local SQLite only (`data/cableguard.sqlite3`). **Never use on production.**
+
+```powershell
+# Stop Event Core first (port 8000 must be free)
+.\scripts\reset_development_database.ps1              # dry-run – no changes
+.\scripts\reset_development_database.ps1 -ConfirmReset  # backup + wipe + alembic upgrade head
+```
+
+- Backups: `runtime/backups/cableguard-<timestamp>.sqlite3` (gitignored)
+- Does not seed simulator events
+- Refuses network paths and paths outside the repo
+
 ## Security
 
 - Do not commit `.env`, `mediamtx.local.yml`, or monitor `.env.local`
+- Set explicit non-placeholder `CABLEGUARD_INGEST_API_KEY` and `CABLEGUARD_KIOSK_API_KEY` in platform `.env`
+- Kiosk key must match monitor `.env.local` (`CABLEGUARD_KIOSK_API_KEY`, no `VITE_` prefix)
 - Frontend never receives ingest or kiosk API keys
-- Published Lovable app stays in mock mode without local proxy
+- Published Lovable app stays in mock mode without local Vite BFF proxy
 
 ## Known limitation
 
