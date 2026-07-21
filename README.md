@@ -13,7 +13,8 @@ py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 Copy-Item .env.example .env
-# set CABLEGUARD_INGEST_API_KEY and CABLEGUARD_KIOSK_API_KEY (server-side; not for React/VITE_*)
+# REQUIRED: set unique CABLEGUARD_INGEST_API_KEY and CABLEGUARD_KIOSK_API_KEY in .env
+# Event Core refuses placeholder/default secrets at startup (see docs/operations.md)
 
 cd backend
 alembic upgrade head

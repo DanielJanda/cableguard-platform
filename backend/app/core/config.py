@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     database_url: str = f"sqlite:///{(REPO_ROOT / 'data' / 'cableguard.sqlite3').as_posix()}"
-    ingest_api_key: str = "change-me-local-dev-key"
-    kiosk_api_key: str = "change-me-local-kiosk-key"
+    ingest_api_key: str = ""
+    kiosk_api_key: str = ""
     heartbeat_timeout_sec: float = 6.0
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
 

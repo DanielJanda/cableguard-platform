@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import acknowledgements, events, heartbeats, status, websocket
 from app.core.config import get_settings
 from app.core.logging import setup_logging
+from app.core.secrets import validate_runtime_secrets
 from app.db.session import init_engine
 from app.services.status_monitor import StatusMonitor
 
@@ -16,6 +17,8 @@ from app.services.status_monitor import StatusMonitor
 async def lifespan(app: FastAPI):
     setup_logging()
     settings = get_settings()
+    if settings.env != "test":
+        validate_runtime_secrets(settings)
     init_engine(settings.database_url)
     monitor = StatusMonitor(timeout_sec=settings.heartbeat_timeout_sec)
     app.state.monitor = monitor
