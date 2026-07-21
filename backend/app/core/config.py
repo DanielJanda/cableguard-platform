@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     kiosk_api_key: str = ""
     heartbeat_timeout_sec: float = 6.0
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
+    mediamtx_api_url: str = "http://127.0.0.1:9997"
 
     @property
     def cors_origins_list(self) -> list[str]:

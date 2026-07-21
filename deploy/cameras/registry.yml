@@ -1,0 +1,29 @@
+# CableGuard camera registry – NO RTSP credentials or camera source URLs.
+# Real camera sources belong only in gitignored deploy/mediamtx/mediamtx.local.yml
+
+registry_version: 1
+
+cameras:
+  - camera_id: zahradky-horni-stanice
+    site_id: zahradky
+    station_id: horni_stanice
+    stream_name: zahradky-horni-stanice
+    rtsp_proxy_path: rtsp://127.0.0.1:8554/zahradky-horni-stanice
+    whep_path: /zahradky-horni-stanice/whep
+    enabled: true
+
+  - camera_id: zahradky-dolni-stanice
+    site_id: zahradky
+    station_id: dolni_stanice
+    stream_name: zahradky-dolni-stanice
+    rtsp_proxy_path: rtsp://127.0.0.1:8554/zahradky-dolni-stanice
+    whep_path: /zahradky-dolni-stanice/whep
+    enabled: false
+
+  - camera_id: testovaci-kancelar-kamera-1
+    site_id: testovaci
+    station_id: kancelar
+    stream_name: testovaci-kancelar-kamera-1
+    rtsp_proxy_path: rtsp://127.0.0.1:8554/testovaci-kancelar-kamera-1
+    whep_path: /testovaci-kancelar-kamera-1/whep
+    enabled: false

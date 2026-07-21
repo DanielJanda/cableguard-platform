@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import acknowledgements, events, heartbeats, status, websocket
+from app.api.v1 import acknowledgements, cameras, events, heartbeats, status, websocket
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.core.secrets import validate_runtime_secrets
@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
     app.include_router(heartbeats.router, prefix="/api/v1", tags=["heartbeats"])
     app.include_router(acknowledgements.router, prefix="/api/v1", tags=["acknowledgements"])
     app.include_router(status.router, prefix="/api/v1", tags=["status"])
+    app.include_router(cameras.router, prefix="/api/v1", tags=["cameras"])
     app.include_router(websocket.router, tags=["websocket"])
     return app
 
