@@ -1,31 +1,34 @@
 ###############################################
 # CableGuard MediaMTX – EXAMPLE ONLY
-# No real RTSP URLs. Fill locally; never commit secrets.
+# Copy to mediamtx.local.yml and fill locally.
+# Never commit real RTSP URLs or credentials.
 ###############################################
 
-# Example stream path names (match platform camera_id / site naming):
-#   zahradky-horni-stanice
-#   zahradky-dolni-stanice
-#   testovaci-kancelar-kamera-1
-#
-# Future WHEP URL shape:
-#   {WHEP_BASE_URL}/{stream_name}/whep
-# e.g. http://127.0.0.1:8889/zahradky-horni-stanice/whep
-
 logLevel: info
+logDestinations: [stdout]
+
 api: yes
 apiAddress: 127.0.0.1:9997
 
+metrics: no
+metricsAddress: 127.0.0.1:9998
+
 rtsp: yes
 rtspAddress: :8554
+rtspTransports: [tcp]
 
 webrtc: yes
 webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcAllowOrigin: "*"
+
+hls: yes
+hlsAddress: :8888
+
+playback: no
 
 paths:
   zahradky-horni-stanice:
-    source: publisher
-  zahradky-dolni-stanice:
-    source: publisher
-  testovaci-kancelar-kamera-1:
-    source: publisher
+    source: rtsp://USERNAME:PASSWORD@CAMERA_ADDRESS/STREAM_PATH
+    rtspTransport: tcp
+    sourceOnDemand: no

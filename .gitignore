@@ -13,6 +13,9 @@ build/
 .env
 data/*.sqlite3
 data/*.sqlite3-*
+runtime/
+deploy/mediamtx/mediamtx.local.yml
+deploy/mediamtx/*.local.yml
 *.log
 .idea/
 .vscode/
