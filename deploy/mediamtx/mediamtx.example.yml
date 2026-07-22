@@ -30,6 +30,17 @@ playback: no
 
 paths:
   zahradky-horni-stanice:
-    source: rtsp://USERNAME:PASSWORD@CAMERA_ADDRESS/STREAM_PATH
+    source: rtsp://USERNAME:PASSWORD@CAMERA_92/Streaming/Channels/102
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  # Comparison-only paths (local setup via scripts/setup_second_zahradky_camera.ps1)
+  zahradky-horni-stanice-92:
+    source: rtsp://USERNAME:PASSWORD@CAMERA_92/Streaming/Channels/102
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  zahradky-horni-stanice-90:
+    source: rtsp://USERNAME:PASSWORD@CAMERA_90/Streaming/Channels/102
     rtspTransport: tcp
     sourceOnDemand: no
