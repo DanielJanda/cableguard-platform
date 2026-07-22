@@ -20,7 +20,8 @@ rtspTransports: [tcp]
 webrtc: yes
 webrtcAddress: :8889
 webrtcLocalUDPAddress: :8189
-webrtcAllowOrigin: "*"
+# Primary internal LAN monitor origin (MediaMTX v1.11: single webrtcAllowOrigin)
+webrtcAllowOrigin: http://10.6.1.40:8080
 
 hls: yes
 hlsAddress: :8888
