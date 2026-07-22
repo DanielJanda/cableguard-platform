@@ -52,3 +52,11 @@ if ($proc.HasExited) {
 Write-Host "Managed MediaMTX started (PID $($proc.Id))." -ForegroundColor Green
 Write-Host "Browser: http://127.0.0.1:8889/zahradky-horni-stanice" -ForegroundColor Cyan
 Write-Host "WHEP:    http://127.0.0.1:8889/zahradky-horni-stanice/whep" -ForegroundColor Cyan
+
+. (Join-Path $PSScriptRoot "mediamtx_health.ps1")
+$whep = Test-MediaMtxWhepReady -MaxAttempts 15 -DelaySec 1
+if ($whep.Ready) {
+    Write-Host "WHEP/path ready (attempt $($whep.Attempt))." -ForegroundColor Green
+} else {
+    Write-Host "MediaMTX process is up; WHEP/path not ready yet (will retry on reconnect)." -ForegroundColor Yellow
+}
