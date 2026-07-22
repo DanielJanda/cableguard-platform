@@ -39,9 +39,29 @@ Event Core (`cableguard-platform` backend) is **not** part of the video path.
 
 ## Security
 
-- RTSP credentials live only in `mediamtx.local.yml` (gitignored).
+- RTSP credentials live only in `mediamtx.local.yml` / `mediamtx.public.yml` (gitignored).
 - Frontend never receives RTSP URL or camera password.
-- Do not expose `mediamtx.local.yml` or legacy configs with credentials.
+- Do not expose `mediamtx.local.yml`, `mediamtx.public.yml`, or legacy configs with credentials.
+
+## Public HTTPS / internet WHEP
+
+See **`deploy/docs/public-video-deployment.md`** for:
+
+- WAN/NAT audit checklist
+- DNS layout (`video.<domain>`, `api.<domain>`)
+- Caddy TLS reverse proxy example
+- `mediamtx.public.example.yml` (ICE, CORS, `webrtcAdditionalHosts`)
+- Port forwarding UDP/TCP 8189
+- Stream authentication model
+- Lovable publish steps
+
+Example configs:
+
+| File | Purpose |
+|---|---|
+| `deploy/mediamtx/mediamtx.public.example.yml` | Internet WebRTC profile template |
+| `deploy/caddy/Caddyfile.example` | HTTPS WHEP proxy |
+| `deploy/public/domains.example.env` | Domain/IP placeholders |
 
 ## Legacy note
 

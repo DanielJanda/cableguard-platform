@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     ingest_api_key: str = ""
     kiosk_api_key: str = ""
     heartbeat_timeout_sec: float = 6.0
-    cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
+    cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8080,http://localhost:8080"
     mediamtx_api_url: str = "http://127.0.0.1:9997"
 
     @property

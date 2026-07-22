@@ -1,0 +1,47 @@
+# CableGuard – Caddy reverse proxy for public WHEP (EXAMPLE)
+# Install Caddy on MediaMTX PC, copy to Caddyfile, replace example.com
+#
+# DNS: video.example.com A → your public IPv4 (194.12.35.108 if port-forward viable)
+# Ports: forward TCP 443 → this host; UDP+TCP 8189 → MediaMTX ICE
+
+{
+	# email admin@example.com
+}
+
+# --- Public HTTPS WHEP (MediaMTX WebRTC HTTP) ---
+video.example.com {
+	encode gzip
+
+	@whep {
+		path /zahradky-horni-stanice/whep*
+		path /zahradky-horni-stanice
+	}
+
+	handle @whep {
+		reverse_proxy 127.0.0.1:8889 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+
+			# WHEP POST returns 201 + Location – preserve relative Location
+			header_down Location {http.reverse_proxy.header.Location}
+		}
+	}
+
+	handle {
+		respond "Not Found" 404
+	}
+
+	log {
+		output file /var/log/caddy/video-access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+		format json
+	}
+}
+
+# --- Event Core (optional, same PC or separate host) ---
+# api.example.com {
+# 	reverse_proxy 127.0.0.1:8000
+# }

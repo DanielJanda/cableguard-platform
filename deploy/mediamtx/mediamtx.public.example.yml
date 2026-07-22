@@ -1,0 +1,52 @@
+###############################################
+# CableGuard MediaMTX – PUBLIC HTTPS/WHEP profile (EXAMPLE)
+# Copy to mediamtx.public.yml and fill locally.
+# NEVER commit mediamtx.public.yml or RTSP credentials.
+#
+# Use together with Caddy TLS on video.<DOMENA> → 127.0.0.1:8889
+# Keep mediamtx.local.yml for LAN/dev if needed.
+###############################################
+
+logLevel: info
+logDestinations: [stdout]
+
+# Control API – localhost ONLY (never expose :9997 to internet)
+api: yes
+apiAddress: 127.0.0.1:9997
+
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp]
+
+webrtc: yes
+# Bind WHEP/WebRTC HTTP to localhost; public HTTPS via Caddy reverse proxy
+webrtcAddress: 127.0.0.1:8889
+webrtcLocalUDPAddress: :8189
+# Optional ICE-TCP fallback (enable after UDP path verified from mobile data)
+# webrtcLocalTCPAddress: :8189
+
+# Public DNS name clients use in browser (must match TLS cert / Caddy site)
+webrtcAdditionalHosts:
+  - video.example.com
+
+# Restrict browser origins – NO wildcard in production
+# Add your Lovable published origin and future monitor.<DOMENA>
+webrtcAllowOrigins:
+  - https://98d9308a-3156-47c0-9d35-204618f8df3b.lovable.app
+  - https://monitor.example.com
+
+hls: yes
+hlsAddress: 127.0.0.1:8888
+
+playback: no
+
+# Recommended before internet exposure – delegate to CableGuard Platform:
+# authMethod: http
+# authHTTPAddress: http://127.0.0.1:8000/internal/mediamtx/auth
+# authHTTPExclude: []
+
+paths:
+  zahradky-horni-stanice:
+    source: rtsp://USERNAME:PASSWORD@CAMERA_ADDRESS/STREAM_PATH
+    rtspTransport: tcp
+    sourceOnDemand: no
