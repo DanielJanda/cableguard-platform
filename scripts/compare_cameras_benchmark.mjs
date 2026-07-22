@@ -3,9 +3,22 @@
  * Run from cableguard-monitor (playwright dependency):
  *   node ../cableguard-platform/scripts/compare_cameras_benchmark.mjs --minutes=20
  */
-import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const require = createRequire(import.meta.url);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const monitorRoot = join(__dirname, "..", "..", "cableguard-monitor");
+const playwrightEntry = join(monitorRoot, "node_modules", "playwright", "index.mjs");
+try {
+  require.resolve(playwrightEntry);
+} catch {
+  console.error("Install playwright in cableguard-monitor: npm install -D playwright");
+  process.exit(1);
+}
+const { chromium } = await import(pathToFileURL(playwrightEntry).href);
 
 const LAN = "10.6.1.40";
 const ORIGIN = `http://${LAN}:8080`;
