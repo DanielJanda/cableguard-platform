@@ -1,0 +1,42 @@
+###############################################
+# CableGuard MediaMTX – INTERNAL LAN profile (EXAMPLE)
+# Copy to mediamtx.internal-lan.yml locally – NEVER commit RTSP credentials.
+#
+# LAN HTTP WHEP + optional internal HTTPS via Caddy (see Caddyfile.internal.example)
+###############################################
+
+logLevel: info
+logDestinations: [stdout]
+
+api: yes
+apiAddress: 127.0.0.1:9997
+
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp]
+
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+# webrtcLocalTCPAddress: :8189
+
+webrtcAdditionalHosts:
+  - 10.6.1.40
+  - video-internal.example.com
+
+webrtcAllowOrigins:
+  - https://98d9308a-3156-47c0-9d35-204618f8df3b.lovable.app
+  - http://localhost:8080
+  - http://127.0.0.1:8080
+  - https://video-internal.example.com
+
+hls: yes
+hlsAddress: :8888
+
+playback: no
+
+paths:
+  zahradky-horni-stanice:
+    source: rtsp://USERNAME:PASSWORD@CAMERA_ADDRESS/STREAM_PATH
+    rtspTransport: tcp
+    sourceOnDemand: no

@@ -1,0 +1,24 @@
+# Internal HTTPS WHEP – company LAN only (EXAMPLE)
+# DNS: video-internal.example.com → 10.6.1.40 (internal split-horizon, NO public A record)
+#
+# Certificate: use internal CA, DNS-01, or Caddy local CA (install root on kiosks)
+
+{
+	# admin offsite or local CA config here
+}
+
+video-internal.example.com {
+	encode gzip
+
+	reverse_proxy 127.0.0.1:8889 {
+		header_up Host {host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	log {
+		output file /var/log/caddy/video-internal-access.log
+		format json
+	}
+}
+
+# Keep plain HTTP :8889 on LAN until this HTTPS path is verified from Lovable browser.

@@ -1,3 +1,4 @@
 # Local MediaMTX secrets and machine-specific config (never commit)
 mediamtx.local.yml
+mediamtx.internal-lan.yml
 *.local.yml

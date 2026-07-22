@@ -37,11 +37,26 @@ Event Core (`cableguard-platform` backend) is **not** part of the video path.
 | Embedded player | `http://127.0.0.1:8889/zahradky-horni-stanice` |
 | WHEP | `http://127.0.0.1:8889/zahradky-horni-stanice/whep` |
 
-## Security
+## Public HTTPS / internet WHEP
 
-- RTSP credentials live only in `mediamtx.local.yml` (gitignored).
-- Frontend never receives RTSP URL or camera password.
-- Do not expose `mediamtx.local.yml` or legacy configs with credentials.
+**Deferred** – see draft PR #6. Current architecture is **internal LAN only**.
+
+## Internal LAN WHEP (current)
+
+See **`deploy/docs/internal-lan-video-deployment.md`** for:
+
+- LAN availability (`10.6.1.40:8889`)
+- Lovable `internal-lan` deployment mode
+- MediaMTX CORS for `*.lovable.app` + localhost
+- Internal HTTPS via Caddy (`video-internal.<DOMENA>` → `127.0.0.1:8889`)
+- Local Network Access / mixed-content notes
+
+Example configs:
+
+| File | Purpose |
+|---|---|
+| `deploy/mediamtx/mediamtx.internal-lan.example.yml` | LAN WebRTC profile |
+| `deploy/caddy/Caddyfile.internal.example` | Internal HTTPS WHEP |
 
 ## Legacy note
 
