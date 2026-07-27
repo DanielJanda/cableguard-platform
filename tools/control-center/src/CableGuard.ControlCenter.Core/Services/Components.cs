@@ -48,19 +48,22 @@ public sealed class ComponentFactory
     private readonly IHttpProber _prober;
     private readonly IScriptRunner _scripts;
     private readonly IMediaMtxApi _mediaMtxApi;
+    private readonly DetectorProcessManager? _detectors;
 
     public ComponentFactory(
         ControlCenterConfig config,
         IProcessInspector processes,
         IHttpProber prober,
         IScriptRunner scripts,
-        IMediaMtxApi mediaMtxApi)
+        IMediaMtxApi mediaMtxApi,
+        DetectorProcessManager? detectors = null)
     {
         _config = config;
         _processes = processes;
         _prober = prober;
         _scripts = scripts;
         _mediaMtxApi = mediaMtxApi;
+        _detectors = detectors;
     }
 
     public IReadOnlyList<IComponentController> CreateAllInStartOrder() => new[]
@@ -162,34 +165,68 @@ public sealed class ComponentFactory
 
     public IComponentController CreateDetector()
     {
-        var configured = !string.IsNullOrWhiteSpace(_config.DetectorStartCommand);
-        var logFile = Path.Combine(_config.DetectorRoot, "runtime", "detector.out.log");
+        var primary = ResolvePrimaryFallInstance();
+        var scriptPath = primary is null
+            ? ""
+            : Path.Combine(_config.DetectorRoot, primary.ScriptRelative.Replace('/', Path.DirectorySeparatorChar));
+        var configured = primary is not null && File.Exists(scriptPath);
+        var logFile = Path.Combine(_config.LogsDir, "detectors",
+            (primary?.Id ?? "fall-zahradky-upper") + ".err.log");
 
         return new ServiceComponent(
             ComponentId.Detector, "Fall Detector", configured, logFile,
             statusFunc: ct =>
             {
-                if (!configured)
+                if (!configured || primary is null)
                     return Task.FromResult(ComponentSnapshot.NotConfigured(
                         ComponentId.Detector,
-                        "NOT CONFIGURED — detector runtime lands in Phase 3; deep health (heartbeat) NOT AVAILABLE on main"));
-                var pid = _processes.FindProcessByCommandLineHint(_config.DetectorProcessHint);
+                        "NOT CONFIGURED — apps/zahradky_horni_pad.py not found (need detector feature/mediamtx-input-profile or later)"));
+
+                var pid = _detectors?.FindPid(primary)
+                          ?? _processes.FindProcessByCommandLineHint(primary.ProcessHint);
                 var status = StatusEvaluators.EvaluateDetector(
                     new ProbeResults(pid is not null, DeepHealthAvailable: false));
                 var detail = pid is not null
-                    ? $"Process running (PID {pid}); deep health NOT AVAILABLE (heartbeat lands in Phase 4)"
-                    : "Not running";
+                    ? $"RUNNING PID {pid} · stream={primary.InputStream} · deep health NOT AVAILABLE"
+                    : $"Stopped · instance={primary.Id} · stream={primary.InputStream}";
                 return Task.FromResult(new ComponentSnapshot(ComponentId.Detector, status, detail, pid));
             },
-            startFunc: ct => RunScriptAsStep(ComponentId.Detector, _config.DetectorStartCommand, ct),
+            startFunc: async ct =>
+            {
+                if (!configured || primary is null || _detectors is null)
+                    return new StartStepResult(ComponentId.Detector, false, "Detector not configured.");
+                var (ok, msg) = await _detectors.StartAsync(primary, ct: ct);
+                return new StartStepResult(ComponentId.Detector, ok, msg);
+            },
             stopFunc: ct =>
             {
-                var pid = _processes.FindProcessByCommandLineHint(_config.DetectorProcessHint);
-                if (pid is null)
-                    return Task.FromResult(new StartStepResult(ComponentId.Detector, true, "Not running."));
-                var ok = _processes.KillProcessTree(pid.Value, "python", out var msg);
+                if (primary is null || _detectors is null)
+                    return Task.FromResult(new StartStepResult(ComponentId.Detector, true, "Not configured."));
+                var (ok, msg) = _detectors.Stop(primary);
                 return Task.FromResult(new StartStepResult(ComponentId.Detector, ok, msg));
             });
+    }
+
+    private DetectorInstance? ResolvePrimaryFallInstance()
+    {
+        var doc = DetectorLaunchBuilder.Load(_config.DetectorsJsonPath);
+        var fall = doc.Instances.FirstOrDefault(i =>
+            i.DetectorType.Equals("fall", StringComparison.OrdinalIgnoreCase) && i.Enabled);
+        if (fall is not null) return fall;
+
+        // Defaults when detectors.json not seeded yet.
+        var script = Path.Combine(_config.DetectorRoot, "apps", "zahradky_horni_pad.py");
+        if (!File.Exists(script)) return null;
+        return new DetectorInstance
+        {
+            Id = "fall-zahradky-upper",
+            DisplayName = "Fall Detector – Zahrádky Upper",
+            DetectorType = "fall",
+            InputStream = _config.ProductionStream,
+            ScriptRelative = "apps/zahradky_horni_pad.py",
+            ProcessHint = "zahradky_horni_pad",
+            Enabled = true,
+        };
     }
 
     private async Task<StartStepResult> RunScriptAsStep(ComponentId id, string scriptPath, CancellationToken ct)

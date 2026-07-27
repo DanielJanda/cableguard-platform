@@ -370,12 +370,17 @@ public sealed class ScenariosViewModel : ObservableObject
         _logger.Info($"[SCENARIO] RUN {Selected.Id}");
         if (Selected.HardwareTest) _hardware.TestMode = true;
         _notifications.TelegramEnabled = Selected.Telegram;
-        foreach (var row in _detectors.Items)
+
+        // Snapshot before any Start/Stop that may reload Items.
+        var snapshot = _detectors.Items.Select(r => r.Instance).ToList();
+        var wanted = new HashSet<string>(Selected.DetectorIds, StringComparer.OrdinalIgnoreCase);
+        foreach (var instance in snapshot)
         {
-            var want = Selected.DetectorIds.Contains(row.Instance.Id, StringComparer.OrdinalIgnoreCase);
-            if (want) await _detectors.StartAsync(row.Instance, Selected.DebugOverlay || row.Instance.DebugOverlay);
-            else await _detectors.StopAsync(row.Instance);
+            var want = wanted.Contains(instance.Id);
+            if (want) await _detectors.StartAsync(instance, Selected.DebugOverlay || instance.DebugOverlay, reload: false);
+            else await _detectors.StopAsync(instance, reload: false);
         }
+        await _detectors.ReloadAsync();
         MessageBox.Show("Scenario applied (best-effort). Check Detectors / Hardware / Notifications.", "Scenario");
     }
 }

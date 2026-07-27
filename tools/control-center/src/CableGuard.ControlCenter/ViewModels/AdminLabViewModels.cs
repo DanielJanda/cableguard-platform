@@ -193,9 +193,12 @@ public sealed class DetectorsViewModel : ObservableObject
         Items.Clear();
         _doc = DetectorLaunchBuilder.Load(_config.DetectorsJsonPath);
         if (_doc.Instances.Count == 0)
+        {
             _doc = DefaultDetectors();
+            try { Persist(); } catch { /* streams may be empty on first boot */ }
+        }
         foreach (var i in _doc.Instances)
-            Items.Add(new DetectorRowViewModel(i, this));
+            Items.Add(new DetectorRowViewModel(i, this, _manager));
         Status = $"{_doc.Instances.Count} detector instances";
         foreach (var row in Items) row.Refresh();
         await Task.CompletedTask;
@@ -237,31 +240,41 @@ public sealed class DetectorsViewModel : ObservableObject
         DetectorLaunchBuilder.Save(_doc, _config.DetectorsJsonPath, streamIds);
     }
 
-    public async Task StartAsync(DetectorInstance instance, bool debug)
+    public async Task StartAsync(DetectorInstance instance, bool debug, bool reload = true)
     {
         var (ok, msg) = await _manager.StartAsync(instance, _notifications(), debug);
         _logger.Info($"[DETECTOR] Start {instance.Id}: {msg}");
         if (!ok) MessageBox.Show(msg, "Detector start", MessageBoxButton.OK, MessageBoxImage.Warning);
-        await ReloadAsync();
+        if (reload) await ReloadAsync();
+        else Items.FirstOrDefault(r => r.Instance.Id == instance.Id)?.Refresh();
     }
 
-    public Task StopAsync(DetectorInstance instance)
+    public Task StopAsync(DetectorInstance instance, bool reload = true)
     {
         var (ok, msg) = _manager.Stop(instance);
+        _logger.Info($"[DETECTOR] Stop {instance.Id}: {msg}");
         if (!ok) MessageBox.Show(msg, "Detector stop", MessageBoxButton.OK, MessageBoxImage.Warning);
-        return ReloadAsync();
+        if (reload) return ReloadAsync();
+        Items.FirstOrDefault(r => r.Instance.Id == instance.Id)?.Refresh();
+        return Task.CompletedTask;
     }
 
     public void OpenDebug(DetectorInstance instance) => _ = StartAsync(instance, debug: true);
+
+    public void RefreshStatuses()
+    {
+        foreach (var row in Items.ToList()) row.Refresh();
+    }
 }
 
 public sealed class DetectorRowViewModel : ObservableObject
 {
     private readonly DetectorsViewModel _parent;
+    private readonly DetectorProcessManager _manager;
     private string _status = "…";
-    public DetectorRowViewModel(DetectorInstance instance, DetectorsViewModel parent)
+    public DetectorRowViewModel(DetectorInstance instance, DetectorsViewModel parent, DetectorProcessManager manager)
     {
-        Instance = instance; _parent = parent;
+        Instance = instance; _parent = parent; _manager = manager;
         StartCommand = new AsyncRelayCommand(() => _parent.StartAsync(Instance, Instance.DebugOverlay));
         StopCommand = new AsyncRelayCommand(() => _parent.StopAsync(Instance));
         DebugCommand = new RelayCommand(() => _parent.OpenDebug(Instance));
@@ -276,7 +289,12 @@ public sealed class DetectorRowViewModel : ObservableObject
     public RelayCommand DebugCommand { get; }
     public void Refresh()
     {
-        // Status refreshed via parent manager on start/stop; placeholder until next poll.
-        Status = Instance.Enabled ? "CONFIGURED" : "DISABLED";
+        if (!Instance.Enabled) { Status = "DISABLED"; Detail = ""; return; }
+        var pid = _manager.FindPid(Instance);
+        Status = pid is not null ? "RUNNING" : "STOPPED";
+        Detail = pid is not null ? $"PID {pid}" : "";
     }
+
+    private string _detail = "";
+    public string Detail { get => _detail; private set => SetField(ref _detail, value); }
 }

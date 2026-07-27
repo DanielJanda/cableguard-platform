@@ -40,10 +40,12 @@ public partial class App : Application
         var credentials = new WindowsCredentialStore();
         var hardware = new NotAvailableHardwareAdapter();
 
-        var factory = new ComponentFactory(config, processes, prober, scripts, mediaMtxApi);
-        var components = factory.CreateAllInStartOrder();
         var switchService = new StreamSwitchService(mediaMtxApi, persister, prober, config.WhepBaseLocal);
         var detectorManager = new DetectorProcessManager(config, logger, processes);
+        RuntimeConfigBootstrap.EnsureDefaults(config, logger);
+
+        var factory = new ComponentFactory(config, processes, prober, scripts, mediaMtxApi, detectorManager);
+        var components = factory.CreateAllInStartOrder();
 
         var mode = new AdminModeViewModel();
         var camerasVm = new CamerasViewModel(config, logger, mediaMtxApi, credentials, switchService);

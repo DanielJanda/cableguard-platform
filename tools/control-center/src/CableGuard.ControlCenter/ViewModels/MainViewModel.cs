@@ -87,6 +87,7 @@ public sealed class MainViewModel : ObservableObject
     public async Task RefreshAllAsync()
     {
         foreach (var row in Services) await row.RefreshAsync();
+        Detectors.RefreshStatuses();
         await RecalculateSystemStatusAsync();
     }
 

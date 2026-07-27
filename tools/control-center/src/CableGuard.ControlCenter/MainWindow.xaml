@@ -196,6 +196,7 @@
                       <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding Status}" Margin="14,0,0,0" Style="{StaticResource StatusBadge}"/>
+                        <TextBlock Text="{Binding Detail}" Margin="8,0,0,0" FontSize="12" Foreground="#FF9AA3AF"/>
                       </StackPanel>
                       <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
                     </StackPanel>
