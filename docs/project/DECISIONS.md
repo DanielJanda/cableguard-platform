@@ -75,3 +75,13 @@ Verified against:
 - **Reason:** Minimalizace úniku; klíč nelze zapomenout „natvrdo“ — systém bez konfigurace odmítne běžet (503).
 - **Consequences:** Acknowledge vyžaduje server-side vrstvu (dnes Vite BFF → Phase 5 přesun do platformy); onboarding vyžaduje ruční založení `.local` souborů podle `*.example`.
 - **Status:** Accepted
+
+## ADR-009 — Local Admin Control Center for development and administration
+
+- **Context:** Běžná administrace (start/stop/status služeb, logy, správa kamerových zdrojů) dnes vyžaduje PowerShell a znalost mnoha skriptů; po restartu Windows není stav systému na první pohled viditelný (riziko M5).
+- **Decision:** Vzniká lokální **CableGuard Control Center** (C#/.NET/WPF, `tools/control-center/`) — pomocné administrační GUI pro správce na 10.6.1.40. **Není to operátorský monitor** (ten zůstává cableguard-monitor) **a není to Supervisor Service** (autonomní služby jsou Phase 6). V MVP re-usuje existující PowerShell runtime skripty.
+- **Reason:** Odstranit PowerShell bariéru pro standardní administraci; health-based přehled stavu; bezpečná správa camera→stream mappingu bez ručních editací YAML.
+- **Consequences:** Nová admin plane vrstva (viz ARCHITECTURE.md) — nesmí zasahovat do safety logiky ani být runtime závislostí; camera registry (`runtime/config/cameras.json`, gitignored) + Windows Credential Manager pro credentials; dlouhodobě může start logika přejít ze skriptů do C#.
+- **Status:** Accepted
+
+

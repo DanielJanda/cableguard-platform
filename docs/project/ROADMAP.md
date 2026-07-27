@@ -19,6 +19,7 @@ Toto není wishlist — fáze vycházejí ze skutečného stavu (viz CURRENT_STA
 | 0 – Foundation | **DONE** | Tři repozitáře, Event Core kontrakt, monitor UI, MediaMTX runtime, detector baseline |
 | 1 – Internal realtime video | **DONE** | Kamera → MediaMTX → WHEP → LAN monitor na 10.6.1.40, acceptance z druhého PC |
 | 2 – Camera evaluation | **CURRENT** | Porovnání kamer 10.2.4.92 vs 10.2.4.90, výběr streamu pro detekci |
+| 2.5 – Local Admin Control Center MVP | **NEXT** (paralelně s Phase 3) | Lokální admin GUI: stav služeb, START ALL, logy, kamery — konec běžné administrace přes PowerShell |
 | 3 – Detector media input | **NEXT** | Detektor trvale čte vybranou MediaMTX path, video-level parita |
 | 4 – Live fall event integration | PLANNED | Reálný pád → Event Core → alarm v monitoru (EventCorePublisher, heartbeat, outbox) |
 | 5 – Production runtime simplification | PLANNED | React build + statický hosting, BFF server-side, konec Vite dev serveru v provozu |
@@ -58,6 +59,29 @@ STATUS: **CURRENT** (platform PR #10, monitor PR #9 — draft)
 - **Out of scope:** Změna detektoru, změna produkční path, transkódování.
 - **Risks:** HEVC main profily (řešeno H.264 substreamy); camera source drift (M3).
 - **Estimated complexity:** **S**
+
+# Phase 2.5 – Local Admin Control Center MVP
+
+STATUS: **NEXT** — může běžet paralelně s Phase 3 (nezávislé pracovní proudy)
+
+- **Objective:** Odstranit nutnost běžné administrace CableGuard přes PowerShell na lokálním PC 10.6.1.40 — po restartu Windows musí být na první pohled vidět, co běží, co spustit a kde jsou logy.
+- **Inputs:** Existující bezpečné runtime skripty (`start_internal_cableguard.ps1`, MediaMTX start/stop/status, Event Core a monitor start skripty), health endpointy (`/api/v1/health`, WHEP OPTIONS), gitignored MediaMTX local config.
+- **Scope MVP (Work):**
+  - lokální CableGuard Admin GUI (C# / .NET / WPF, `tools/control-center/`),
+  - stav MediaMTX, Event Core, Monitoru, Detectoru — **health-based status, ne jen existence procesu**,
+  - START ALL s řízením závislostí (MediaMTX → Event Core → Monitor → Detector) a readiness čekáním,
+  - Start / Stop / Restart jednotlivých komponent (re-use PowerShell skriptů),
+  - centralizovaný přístup k logům (`runtime/logs/`, live tail, filtrování, redakce secrets),
+  - Open Dashboard / Open Kiosk,
+  - přehled kamer, test/preview kamer (preview přes MediaMTX built-in player),
+  - příprava logického camera → stream mappingu (`runtime/config/cameras.json`, gitignored; credentials ve Windows Credential Manager).
+- **Dependencies:** žádné tvrdé; Phase 2 běží paralelně.
+- **Acceptance criteria:** PC restart use case — admin spustí Control Center, GUI ukáže STOPPED, klik START ALL nastartuje stack v pořadí s readiness kontrolami, SYSTEM READY, Open Kiosk zobrazí živou kameru — **bez otevření PowerShellu**.
+- **Out of scope:** Windows Supervisor Service / auto-start (Phase 6), změny fall detection thresholds, ovládání relé/semaforu, změny AI modelu či safety logiky, změny detector configu.
+- **Risks:** duplikace start logiky (mitigace: volat existující skripty), MediaMTX v1.11.3 Control API omezení pro runtime path switching.
+- **Estimated complexity:** **M**
+
+**Odlišení od Phase 6:** Phase 2.5 = **ruční administrační GUI** pro vývojáře/admina (člověk kliká). Phase 6 = **autonomní** start po rebootu, recovery, Windows Services. Control Center nesmí být podmínkou běhu systému — služby musí fungovat i bez něj.
 
 # Phase 3 – Detector media input
 

@@ -58,6 +58,10 @@ Stav integrace: video plane a event plane jsou CONFIRMED end-to-end; hrana **Det
 
 **Monitor řeší pouze zobrazení a interakci operátora.** Video přijímá přímo z MediaMTX (ne přes Event Core), události přes WS, acknowledge přes BFF.
 
+### Admin plane (operations tooling)
+
+**Administrační nástroje (Control Center, provozní skripty) nejsou součástí video/event/detection plane.** Slouží lokálnímu správci na 10.6.1.40 k runtime administraci (start/stop/status, logy, správa kamerových zdrojů). **Nesmí zasahovat do safety logiky** — neměnit detekční thresholdy, AI model ani ovládat relé/semafor — a systém musí být plně funkční i bez nich (admin plane není runtime závislost).
+
 ## Tvrdá pravidla (vynucená kódem a testy)
 
 - **Video neprotéká přes Event Core** — Event Core nemá žádný video endpoint; nese jen metadata (`snapshot_url`, `clip_url`).

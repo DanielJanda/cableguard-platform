@@ -95,7 +95,14 @@ Kritické zhodnocení. Fakt z 2026-07-27: po auditu žádná služba neběžela 
 - **Current mitigation:** Setup skript pro druhou kameru existuje (PR #10); path model škáluje technicky dobře.
 - **Recommended action:** Při Phase 8 zobecnit setup skript a camera registry (config-driven místo hardcoded).
 
-### M5 — Omezení headless WebRTC testů
+### M5 — Administrace vyžaduje znalost PowerShell skriptů, stav služeb není centralizovaný
+
+- **Impact:** Po restartu Windows není na první pohled vidět, které komponenty běží, co a v jakém pořadí spustit, kde jsou logy a která kamera je přiřazena kterému streamu. Běžná administrace vyžaduje PowerShell a znalost ~17 skriptů — bariéra pro kohokoli kromě autora.
+- **Likelihood:** Vysoká (každý reboot / předání správy jiné osobě).
+- **Current mitigation:** `start_internal_cableguard.ps1` jako jediný vstupní bod; OPERATIONS.md runbook.
+- **Recommended action:** Phase 2.5 — lokální Admin Control Center (GUI: health-based status, START ALL, logy, kamery); dlouhodobě Phase 6 (autonomní služby).
+
+### M6 — Omezení headless WebRTC testů
 
 - **Impact:** Plný video acceptance nejde automatizovat (headless ICE/dekódování nespolehlivé, Playwright testy občas visí) → regrese videa se pozná až manuálně.
 - **Likelihood:** Trvalé omezení nástrojů.
