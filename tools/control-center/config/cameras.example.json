@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "cameras": [
+    {
+      "camera_id": "zahradky-upper-92",
+      "display_name": "Horní kamera 92",
+      "site_id": "zahradky",
+      "station_id": "horni-stanice",
+      "host": "10.2.4.92",
+      "rtsp_port": 554,
+      "profile": "Streaming/Channels/102",
+      "enabled": true,
+      "credential_ref": "CableGuard.Camera.zahradky-upper-92",
+      "mediamtx_path": "zahradky-horni-stanice-92"
+    },
+    {
+      "camera_id": "zahradky-upper-90",
+      "display_name": "Horní kamera 90",
+      "site_id": "zahradky",
+      "station_id": "horni-stanice",
+      "host": "10.2.4.90",
+      "rtsp_port": 554,
+      "profile": "Streaming/Channels/102",
+      "enabled": true,
+      "credential_ref": "CableGuard.Camera.zahradky-upper-90",
+      "mediamtx_path": "zahradky-horni-stanice-90"
+    }
+  ],
+  "stream_mappings": [
+    {
+      "logical_stream": "zahradky-horni-stanice",
+      "primary_camera_id": "zahradky-upper-92"
+    }
+  ]
+}
