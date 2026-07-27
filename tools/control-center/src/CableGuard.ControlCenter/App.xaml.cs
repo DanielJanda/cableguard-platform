@@ -56,11 +56,14 @@ public partial class App : Application
         var calibrationVm = new CalibrationViewModel(config, logger);
         var hardwareVm = new HardwareViewModel(logger, hardware);
         var scenariosVm = new ScenariosViewModel(config, logger, detectorsVm, notificationsVm, hardwareVm);
+        var videoLabCollector = new VideoLabCollector(config, mediaMtxApi, http);
+        var videoLabVm = new VideoLabViewModel(config, logger, videoLabCollector,
+            () => StreamsService.Load(config.StreamsJsonPath), () => camerasVm.Registry, components);
         var logsVm = new LogsViewModel(config);
         var settingsVm = new SettingsViewModel(config);
 
         var mainVm = new MainViewModel(config, logger, components, mode, camerasVm, streamsVm, detectorsVm,
-            calibrationVm, notificationsVm, hardwareVm, scenariosVm, logsVm, settingsVm);
+            calibrationVm, notificationsVm, hardwareVm, scenariosVm, videoLabVm, logsVm, settingsVm);
 
         logger.Info("Composition complete, showing window.");
         var window = new MainWindow(mainVm);

@@ -289,6 +289,86 @@
         </StackPanel>
       </TabItem>
 
+      <!-- VIDEO LAB -->
+      <TabItem Header="Video Lab" DataContext="{Binding VideoLab}">
+        <ScrollViewer Margin="16" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border Background="#FF1E3A5F" Padding="10" CornerRadius="4" Margin="0,0,0,12">
+              <TextBlock TextWrapping="Wrap" FontWeight="SemiBold"
+                         Text="VIDEO LAB — TRANSPORT ≠ GLASS-TO-GLASS ≠ DETECTOR FRESHNESS. LIVE ≠ REALTIME. WebRTC RTT/FPS are not G2G latency."/>
+            </Border>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+              <TextBlock Text="Stream:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <ComboBox Width="260" ItemsSource="{Binding StreamIds}" SelectedItem="{Binding SelectedStreamId}"/>
+              <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
+              <Button Content="Open WHEP Probe" Command="{Binding OpenProbeCommand}" Background="#FF3A5A8C"/>
+              <Button Content="Enable localhost metrics" Command="{Binding EnableMetricsCommand}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding MetricsStatus}" Foreground="#FF9AA3AF" Margin="0,0,0,8"/>
+
+            <TextBlock Text="Live Metrics / VIDEO HEALTH" FontSize="16" FontWeight="SemiBold"/>
+            <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,4,0,12">
+              <TextBlock Text="{Binding LiveSummary}" FontFamily="Consolas" FontSize="12"/>
+            </Border>
+
+            <TextBlock Text="{Binding G2GDisplay}" FontSize="16" FontWeight="Bold" Foreground="#FFFFCC80" Margin="0,0,0,8"/>
+            <TextBlock Text="Latency Test (manual)" FontSize="16" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+              <Button Content="Open latency pattern" Command="{Binding OpenLatencyPatternCommand}"/>
+              <TextBox Width="100" Text="{Binding ManualLatencyText}" Background="#FF2C313A" Foreground="#FFDDE1E7" Margin="8,0"/>
+              <TextBlock Text="ms" VerticalAlignment="Center"/>
+              <Button Content="Record Manual Latency" Command="{Binding RecordManualLatencyCommand}" Background="#FF2E7D32"/>
+            </StackPanel>
+            <TextBlock Text="{Binding AutomatedLatencyStatus}" TextWrapping="Wrap" Foreground="#FF9AA3AF" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Detector Freshness (runtime only — NOT G2G)" FontSize="16" FontWeight="SemiBold"/>
+            <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,4,0,12">
+              <TextBlock Text="{Binding DetectorFreshnessText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+
+            <TextBlock Text="Camera Profiles" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="Audit mapped camera" Command="{Binding AuditCameraCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
+            <TextBlock Text="{Binding ProfileAudit}" TextWrapping="Wrap" Foreground="#FF9AA3AF" Margin="0,0,0,12"/>
+
+            <TextBlock Text="A/B Camera Benchmark" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="Run A/B snapshot" Command="{Binding RunAbBenchmarkCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
+            <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,0,0,12">
+              <TextBlock Text="{Binding AbReport}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+
+            <TextBlock Text="Resource Monitor" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="Refresh resources" Command="{Binding RefreshResourcesCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
+            <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,0,0,12">
+              <TextBlock Text="{Binding ResourceText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+
+            <TextBlock Text="Soak Test" FontSize="16" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+              <Button Content="1 min" Command="{Binding StartSoak1MinCommand}"/>
+              <Button Content="15 min" Command="{Binding StartSoak15MinCommand}"/>
+              <Button Content="30 min" Command="{Binding StartSoak30MinCommand}"/>
+              <Button Content="1 h" Command="{Binding StartSoak1hCommand}"/>
+              <Button Content="4 h" Command="{Binding StartSoak4hCommand}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding SoakStatus}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+            <TextBlock Text="Failure Injection (TEST MODE)" FontSize="16" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+              <Button Content="Restart MediaMTX" Command="{Binding InjectRestartMediaMtxCommand}" Background="#FF6D4C00"/>
+              <Button Content="Restart Detector" Command="{Binding InjectRestartDetectorCommand}" Background="#FF6D4C00"/>
+              <Button Content="Restart Event Core" Command="{Binding InjectRestartEventCoreCommand}" Background="#FF6D4C00"/>
+              <Button Content="Restart Monitor" Command="{Binding InjectRestartMonitorCommand}" Background="#FF6D4C00"/>
+            </StackPanel>
+
+            <TextBlock Text="Qualification Reports" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="RUN QUALIFICATION" Command="{Binding RunQualificationCommand}" Background="#FF3A5A8C" HorizontalAlignment="Left" Margin="0,4,0,8"/>
+            <Border Background="#FF14161A" Padding="10" CornerRadius="4">
+              <TextBlock Text="{Binding QualificationResult}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- LOGS -->
       <TabItem Header="Logs" DataContext="{Binding Logs}">
         <Grid Margin="16">

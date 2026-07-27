@@ -29,6 +29,7 @@ public sealed class MainViewModel : ObservableObject
         NotificationsViewModel notifications,
         HardwareViewModel hardware,
         ScenariosViewModel scenarios,
+        VideoLabViewModel videoLab,
         LogsViewModel logs,
         SettingsViewModel settings)
     {
@@ -42,6 +43,7 @@ public sealed class MainViewModel : ObservableObject
         Notifications = notifications;
         Hardware = hardware;
         Scenarios = scenarios;
+        VideoLab = videoLab;
         Logs = logs;
         Settings = settings;
 
@@ -71,6 +73,7 @@ public sealed class MainViewModel : ObservableObject
     public NotificationsViewModel Notifications { get; }
     public HardwareViewModel Hardware { get; }
     public ScenariosViewModel Scenarios { get; }
+    public VideoLabViewModel VideoLab { get; }
     public LogsViewModel Logs { get; }
     public SettingsViewModel Settings { get; }
 
