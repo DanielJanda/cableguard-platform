@@ -8,7 +8,19 @@ Verified against:
 - cableguard-monitor `main` commit `f085ef0`
 - cableguard-detector `main` commit `c628a2f`
 
-Vše se spouští na PC **`10.6.1.40`** v PowerShellu. Skripty nikdy nevypisují secrets.
+Vše se spouští na PC **`10.6.1.40`**. Skripty nikdy nevypisují secrets.
+
+### Preferovaný admin vstup (po Phase 2.5 / 2.6)
+
+```powershell
+cd C:\Users\mega\Documents\cableguard-platform\tools\control-center
+dotnet run --project src/CableGuard.ControlCenter
+# nebo: publish\CableGuard.ControlCenter.exe
+```
+
+**CableGuard Admin Studio** (Control Center) — OPERATIONS = start/stop/health/logy/open monitor; TEST LAB = kamery, streams, detectors, ROI, Telegram, hardware test, scenarios. Lokální config jen v gitignored `runtime/config/`.
+
+PowerShell skripty níže zůstávají platné jako fallback / CI.
 
 ---
 

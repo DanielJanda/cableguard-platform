@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 namespace CableGuard.ControlCenter.Core.Models;
 
 /// <summary>
-/// Physical camera entry in runtime/config/cameras.json.
-/// Never contains a password: only a credential_ref into Windows Credential Manager.
+/// Physical camera entry. Never contains a password — only credential_ref.
+/// Logical MediaMTX paths live in streams.json, not here.
 /// </summary>
 public sealed class CameraEntry
 {
@@ -15,12 +15,14 @@ public sealed class CameraEntry
     [JsonPropertyName("host")] public string Host { get; set; } = "";
     [JsonPropertyName("rtsp_port")] public int RtspPort { get; set; } = 554;
     [JsonPropertyName("profile")] public string Profile { get; set; } = "";
+    [JsonPropertyName("transport")] public string Transport { get; set; } = "tcp";
     [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
     [JsonPropertyName("credential_ref")] public string CredentialRef { get; set; } = "";
+    /// <summary>Optional dedicated MediaMTX path for this physical camera (e.g. comparison path).</summary>
     [JsonPropertyName("mediamtx_path")] public string MediaMtxPath { get; set; } = "";
 }
 
-/// <summary>Maps a stable logical stream name to the physical camera currently feeding it.</summary>
+/// <summary>Legacy inline mapping kept for cameras.json v1 compatibility.</summary>
 public sealed class StreamMapping
 {
     [JsonPropertyName("logical_stream")] public string LogicalStream { get; set; } = "";
@@ -31,5 +33,23 @@ public sealed class CameraRegistryDocument
 {
     [JsonPropertyName("version")] public int Version { get; set; } = 1;
     [JsonPropertyName("cameras")] public List<CameraEntry> Cameras { get; set; } = new();
+    /// <summary>Deprecated — prefer streams.json. Still loaded for migration.</summary>
     [JsonPropertyName("stream_mappings")] public List<StreamMapping> StreamMappings { get; set; } = new();
+}
+
+/// <summary>Logical stream — stable MediaMTX path consumed by frontend/detector.</summary>
+public sealed class LogicalStream
+{
+    [JsonPropertyName("stream_id")] public string StreamId { get; set; } = "";
+    [JsonPropertyName("display_name")] public string DisplayName { get; set; } = "";
+    [JsonPropertyName("mediamtx_path")] public string MediaMtxPath { get; set; } = "";
+    [JsonPropertyName("camera_id")] public string CameraId { get; set; } = "";
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
+    [JsonPropertyName("is_production")] public bool IsProduction { get; set; }
+}
+
+public sealed class StreamsDocument
+{
+    [JsonPropertyName("version")] public int Version { get; set; } = 1;
+    [JsonPropertyName("streams")] public List<LogicalStream> Streams { get; set; } = new();
 }

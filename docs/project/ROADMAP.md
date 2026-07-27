@@ -19,7 +19,8 @@ Toto není wishlist — fáze vycházejí ze skutečného stavu (viz CURRENT_STA
 | 0 – Foundation | **DONE** | Tři repozitáře, Event Core kontrakt, monitor UI, MediaMTX runtime, detector baseline |
 | 1 – Internal realtime video | **DONE** | Kamera → MediaMTX → WHEP → LAN monitor na 10.6.1.40, acceptance z druhého PC |
 | 2 – Camera evaluation | **CURRENT** | Porovnání kamer 10.2.4.92 vs 10.2.4.90, výběr streamu pro detekci |
-| 2.5 – Local Admin Control Center MVP | **NEXT** (paralelně s Phase 3) | Lokální admin GUI: stav služeb, START ALL, logy, kamery — konec běžné administrace přes PowerShell |
+| 2.5 – Local Admin Control Center MVP | **DONE** | Lokální admin GUI MVP mergnuto (PR #21) |
+| 2.6 – Admin Studio / Test Lab | **CURRENT** | OPERATIONS\|TEST LAB: cameras CRUD, streams, detectors, ROI, notifications, hardware test, scenarios |
 | 3 – Detector media input | **NEXT** | Detektor trvale čte vybranou MediaMTX path, video-level parita |
 | 4 – Live fall event integration | PLANNED | Reálný pád → Event Core → alarm v monitoru (EventCorePublisher, heartbeat, outbox) |
 | 5 – Production runtime simplification | PLANNED | React build + statický hosting, BFF server-side, konec Vite dev serveru v provozu |
@@ -82,6 +83,15 @@ STATUS: **NEXT** — může běžet paralelně s Phase 3 (nezávislé pracovní 
 - **Estimated complexity:** **M**
 
 **Odlišení od Phase 6:** Phase 2.5 = **ruční administrační GUI** pro vývojáře/admina (člověk kliká). Phase 6 = **autonomní** start po rebootu, recovery, Windows Services. Control Center nesmí být podmínkou běhu systému — služby musí fungovat i bez něj.
+
+# Phase 2.6 – Admin Studio / Test Lab
+
+STATUS: **CURRENT** — rozšíření Control Center MVP
+
+- **Objective:** Odstranit nutnost ručních úprav Python/YAML/PowerShell při běžném vývoji a testování (kamery v kanceláři, detector profily, ROI, Telegram, hardware test).
+- **Work:** Dual mode OPERATIONS|TEST LAB; tabs Scenarios/Cameras/Streams/Detectors/Calibration/Notifications/Hardware; gitignored `runtime/config/*`; detector launch přes MediaMTX logical streams; ROI profily; hardware TEST MODE guardrails (bez auto vazby detector→relay).
+- **Out of scope:** editace ANGLE/TORSO/MOV/AXIS/weights/risk threshold; auto safety I/O (Phase 7); embedded WebRTC inference player (MVP = OpenCV debug overlay).
+- **Estimated complexity:** **L**
 
 # Phase 3 – Detector media input
 

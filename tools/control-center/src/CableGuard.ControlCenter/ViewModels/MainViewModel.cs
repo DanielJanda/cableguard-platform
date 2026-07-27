@@ -13,7 +13,6 @@ public sealed class MainViewModel : ObservableObject
     private readonly ControlCenterLogger _logger;
     private readonly StartAllOrchestrator _orchestrator;
     private readonly DispatcherTimer _refreshTimer;
-
     private string _systemStatus = "…";
     private string _startAllProgress = "";
     private bool _busy;
@@ -22,26 +21,39 @@ public sealed class MainViewModel : ObservableObject
         ControlCenterConfig config,
         ControlCenterLogger logger,
         IReadOnlyList<IComponentController> components,
+        AdminModeViewModel mode,
         CamerasViewModel cameras,
+        StreamsViewModel streams,
+        DetectorsViewModel detectors,
+        CalibrationViewModel calibration,
+        NotificationsViewModel notifications,
+        HardwareViewModel hardware,
+        ScenariosViewModel scenarios,
         LogsViewModel logs,
         SettingsViewModel settings)
     {
         _config = config;
         _logger = logger;
+        Mode = mode;
         Cameras = cameras;
+        Streams = streams;
+        Detectors = detectors;
+        Calibration = calibration;
+        Notifications = notifications;
+        Hardware = hardware;
+        Scenarios = scenarios;
         Logs = logs;
         Settings = settings;
 
         foreach (var component in components)
             Services.Add(new ServiceRowViewModel(component, logger, () => _ = RecalculateSystemStatusAsync()));
 
-        _orchestrator = new StartAllOrchestrator(
-            components, TimeSpan.FromSeconds(config.ReadinessTimeoutSeconds));
-
+        _orchestrator = new StartAllOrchestrator(components, TimeSpan.FromSeconds(config.ReadinessTimeoutSeconds));
         StartAllCommand = new AsyncRelayCommand(StartAllAsync, () => !_busy);
         StopAllCommand = new AsyncRelayCommand(StopAllAsync, () => !_busy);
         OpenDashboardCommand = new RelayCommand(() => OpenUrl(_config.DashboardUrl));
         OpenKioskCommand = new RelayCommand(() => OpenUrl(_config.KioskUrl));
+        OpenTestLabCommand = new RelayCommand(() => Mode.TestLabCommand.Execute(null));
         RefreshCommand = new AsyncRelayCommand(RefreshAllAsync);
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
@@ -50,8 +62,15 @@ public sealed class MainViewModel : ObservableObject
         _ = RefreshAllAsync();
     }
 
+    public AdminModeViewModel Mode { get; }
     public ObservableCollection<ServiceRowViewModel> Services { get; } = new();
     public CamerasViewModel Cameras { get; }
+    public StreamsViewModel Streams { get; }
+    public DetectorsViewModel Detectors { get; }
+    public CalibrationViewModel Calibration { get; }
+    public NotificationsViewModel Notifications { get; }
+    public HardwareViewModel Hardware { get; }
+    public ScenariosViewModel Scenarios { get; }
     public LogsViewModel Logs { get; }
     public SettingsViewModel Settings { get; }
 
@@ -62,22 +81,19 @@ public sealed class MainViewModel : ObservableObject
     public AsyncRelayCommand StopAllCommand { get; }
     public RelayCommand OpenDashboardCommand { get; }
     public RelayCommand OpenKioskCommand { get; }
+    public RelayCommand OpenTestLabCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
 
     public async Task RefreshAllAsync()
     {
-        foreach (var row in Services)
-            await row.RefreshAsync();
+        foreach (var row in Services) await row.RefreshAsync();
+        Detectors.RefreshStatuses();
         await RecalculateSystemStatusAsync();
     }
 
     private Task RecalculateSystemStatusAsync()
     {
-        var snapshots = Services
-            .Select(s => s.LastSnapshot)
-            .Where(s => s is not null)
-            .Cast<ComponentSnapshot>()
-            .ToList();
+        var snapshots = Services.Select(s => s.LastSnapshot).Where(s => s is not null).Cast<ComponentSnapshot>().ToList();
         SystemStatus = snapshots.Count == 0 ? "…" : SystemStatusCalculator.Calculate(snapshots) switch
         {
             Core.Models.SystemStatus.Ready => "READY",
@@ -101,15 +117,10 @@ public sealed class MainViewModel : ObservableObject
         {
             var result = await Task.Run(() => _orchestrator.StartAllAsync(progress));
             if (!result.Success && result.FailedAt is not null)
-                MessageBox.Show(
-                    $"FAILED AT: {result.FailedAt}\n\n{result.Steps.LastOrDefault()?.Message}",
+                MessageBox.Show($"FAILED AT: {result.FailedAt}\n\n{result.Steps.LastOrDefault()?.Message}",
                     "START ALL failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally
-        {
-            _busy = false;
-            await RefreshAllAsync();
-        }
+        finally { _busy = false; await RefreshAllAsync(); }
     }
 
     private async Task StopAllAsync()
@@ -120,19 +131,13 @@ public sealed class MainViewModel : ObservableObject
         _busy = true;
         try
         {
-            // Reverse dependency order: detector → monitor → event core → mediamtx.
             foreach (var row in Services.Reverse())
             {
                 if (!row.Component.IsConfigured) continue;
-                _logger.Info($"[STOP ALL] Stopping {row.Name}...");
                 await row.Component.StopAsync();
             }
         }
-        finally
-        {
-            _busy = false;
-            await RefreshAllAsync();
-        }
+        finally { _busy = false; await RefreshAllAsync(); }
     }
 
     private static void OpenUrl(string url) =>

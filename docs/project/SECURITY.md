@@ -17,7 +17,8 @@ Verified against:
 | `CABLEGUARD_INGEST_API_KEY` (ingest key) | platform `.env` (gitignored); posílá detektor/simulátor v `X-API-Key` | v Gitu, ve frontendu |
 | `CABLEGUARD_KIOSK_API_KEY` (kiosk key) | monitor `.env.internal-lan.local` (gitignored), čte **jen** Vite server-side (bez `VITE_` prefixu); injektuje BFF do `X-Kiosk-Key` | v browser bundle, v Gitu |
 | RTSP credentials kamer | `deploy/mediamtx/mediamtx.local.yml` (gitignored); detector `.env` (gitignored) | ve frontendu, v Gitu, v log výstupech skriptů |
-| Telegram token/chat | detector `.env` (gitignored) | v Gitu |
+| Telegram token/chat | detector `.env` (gitignored); Admin Studio → Windows Credential Manager (`CableGuard.Telegram.*`) | v Gitu, v `notifications.json`, v logách |
+| RTSP camera passwords (Admin Studio) | Windows Credential Manager (`CableGuard.Camera.*`); nikdy `cameras.json` | v Gitu, ve frontendu, v logách |
 
 Vynucení kódem, ne jen konvencí:
 

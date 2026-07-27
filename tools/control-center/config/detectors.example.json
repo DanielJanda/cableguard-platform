@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "instances": [
+    {
+      "id": "fall-zahradky-upper",
+      "display_name": "Fall Detector – Zahrádky Upper",
+      "detector_type": "fall",
+      "input_stream": "zahradky-horni-stanice",
+      "model": "yolo11m-pose.pt",
+      "roi_profile": "zahradky-upper-production",
+      "device": "cuda:0",
+      "enabled": true,
+      "debug_overlay": false,
+      "publish_jsonl": true,
+      "publish_event_core": false,
+      "publish_telegram": false,
+      "script_relative": "apps/zahradky_horni_pad.py",
+      "process_hint": "zahradky_horni_pad",
+      "extra_args": []
+    },
+    {
+      "id": "barrier-zahradky-upper",
+      "display_name": "Barrier Detector – Zahrádky Upper",
+      "detector_type": "barrier",
+      "input_stream": "zahradky-horni-stanice",
+      "model": "barrier_best_m.pt",
+      "roi_profile": "barrier-upper-production",
+      "device": "cuda:0",
+      "enabled": true,
+      "debug_overlay": false,
+      "publish_jsonl": false,
+      "publish_event_core": false,
+      "publish_telegram": false,
+      "script_relative": "zahradky_safety/app.py",
+      "process_hint": "zahradky_safety",
+      "extra_args": []
+    },
+    {
+      "id": "fall-office-test",
+      "display_name": "Fall Detector – Office test",
+      "detector_type": "fall",
+      "input_stream": "office-test",
+      "model": "yolo11m-pose.pt",
+      "roi_profile": "office-fall-test",
+      "device": "cuda:0",
+      "enabled": false,
+      "debug_overlay": true,
+      "publish_jsonl": true,
+      "publish_event_core": false,
+      "publish_telegram": false,
+      "script_relative": "apps/zahradky_horni_pad.py",
+      "process_hint": "zahradky_horni_pad",
+      "extra_args": []
+    }
+  ]
+}

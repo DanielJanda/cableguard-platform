@@ -58,9 +58,15 @@ Stav integrace: video plane a event plane jsou CONFIRMED end-to-end; hrana **Det
 
 **Monitor řeší pouze zobrazení a interakci operátora.** Video přijímá přímo z MediaMTX (ne přes Event Core), události přes WS, acknowledge přes BFF.
 
-### Admin plane (operations tooling)
+### Admin / Test plane (operations tooling)
 
-**Administrační nástroje (Control Center, provozní skripty) nejsou součástí video/event/detection plane.** Slouží lokálnímu správci na 10.6.1.40 k runtime administraci (start/stop/status, logy, správa kamerových zdrojů). **Nesmí zasahovat do safety logiky** — neměnit detekční thresholdy, AI model ani ovládat relé/semafor — a systém musí být plně funkční i bez nich (admin plane není runtime závislost).
+**Administrační nástroje (Control Center / Admin Studio, provozní skripty) nejsou součástí video/event/detection/presentation plane.** Slouží lokálnímu správci a vývojáři na 10.6.1.40.
+
+Dva režimy:
+- **OPERATIONS** — start/stop/status, logy, open monitor/kiosk (bez citlivých změn).
+- **TEST LAB** — kamery, streams, detector instances, ROI, notifikace, hardware TEST MODE, scenarios.
+
+**Nesmí:** měnit fall algorithm thresholds / weights (golden master), automaticky vazbit detector → relay, být runtime závislostí systému. Manuální hardware test jen s explicitním TEST MODE + confirmation + audit log.
 
 ## Tvrdá pravidla (vynucená kódem a testy)
 

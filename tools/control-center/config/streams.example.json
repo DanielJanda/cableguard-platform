@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "streams": [
+    {
+      "stream_id": "zahradky-horni-stanice",
+      "display_name": "Zahrádky horní stanice (production)",
+      "mediamtx_path": "zahradky-horni-stanice",
+      "camera_id": "zahradky-upper-92",
+      "enabled": true,
+      "is_production": true
+    },
+    {
+      "stream_id": "zahradky-horni-compare",
+      "display_name": "Zahrádky compare 90",
+      "mediamtx_path": "zahradky-horni-stanice-90",
+      "camera_id": "zahradky-upper-90",
+      "enabled": true,
+      "is_production": false
+    },
+    {
+      "stream_id": "office-test",
+      "display_name": "Office test",
+      "mediamtx_path": "office-test",
+      "camera_id": "office-test-1",
+      "enabled": false,
+      "is_production": false
+    }
+  ]
+}

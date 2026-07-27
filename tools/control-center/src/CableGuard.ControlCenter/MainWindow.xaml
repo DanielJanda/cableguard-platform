@@ -1,250 +1,330 @@
 <Window x:Class="CableGuard.ControlCenter.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="CableGuard Admin — Control Center"
-        Width="1060" Height="720"
-        Background="#FF1B1E24"
-        FontFamily="Segoe UI">
-    <Window.Resources>
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFDDE1E7"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Margin" Value="4,0"/>
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Background" Value="#FF2C313A"/>
-            <Setter Property="Foreground" Value="#FFDDE1E7"/>
-            <Setter Property="BorderBrush" Value="#FF444B57"/>
-        </Style>
-        <Style TargetType="TabItem">
-            <Setter Property="Padding" Value="14,6"/>
-        </Style>
-        <Style x:Key="StatusBadge" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="#FF9AA3AF"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Status}" Value="RUNNING">
-                    <Setter Property="Foreground" Value="#FF4CAF50"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="STOPPED">
-                    <Setter Property="Foreground" Value="#FF9AA3AF"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="DEGRADED">
-                    <Setter Property="Foreground" Value="#FFFFB300"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="FAULT">
-                    <Setter Property="Foreground" Value="#FFE53935"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="LIVE">
-                    <Setter Property="Foreground" Value="#FF4CAF50"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="OFFLINE">
-                    <Setter Property="Foreground" Value="#FFE53935"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-    </Window.Resources>
+        Title="CableGuard Admin Studio — Control Center"
+        Width="1180" Height="780"
+        Background="#FF1B1E24" FontFamily="Segoe UI">
+  <Window.Resources>
+    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#FFDDE1E7"/></Style>
+    <Style TargetType="Button">
+      <Setter Property="Margin" Value="4,0"/><Setter Property="Padding" Value="10,4"/>
+      <Setter Property="Background" Value="#FF2C313A"/><Setter Property="Foreground" Value="#FFDDE1E7"/>
+      <Setter Property="BorderBrush" Value="#FF444B57"/>
+    </Style>
+    <Style x:Key="StatusBadge" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#FF9AA3AF"/>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Status}" Value="RUNNING"><Setter Property="Foreground" Value="#FF4CAF50"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="LIVE"><Setter Property="Foreground" Value="#FF4CAF50"/></DataTrigger>
+        <DataTrigger Binding="{Binding Live}" Value="LIVE"><Setter Property="Foreground" Value="#FF4CAF50"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="STOPPED"><Setter Property="Foreground" Value="#FF9AA3AF"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="FAULT"><Setter Property="Foreground" Value="#FFE53935"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="OFFLINE"><Setter Property="Foreground" Value="#FFE53935"/></DataTrigger>
+        <DataTrigger Binding="{Binding Live}" Value="OFFLINE"><Setter Property="Foreground" Value="#FFE53935"/></DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </Window.Resources>
+
+  <DockPanel>
+    <!-- Mode switch -->
+    <Border DockPanel.Dock="Top" Padding="12,8" Background="{Binding Mode.ModeBannerBrush}">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal">
+          <Button Content="OPERATIONS" Command="{Binding Mode.OperationsCommand}" FontWeight="Bold" Padding="14,6"/>
+          <Button Content="TEST LAB" Command="{Binding Mode.TestLabCommand}" FontWeight="Bold" Padding="14,6" Background="#FF6D4C00"/>
+        </StackPanel>
+        <TextBlock Grid.Column="1" Text="{Binding Mode.ModeBanner}" FontWeight="SemiBold"
+                   VerticalAlignment="Center" Margin="16,0" FontSize="14"/>
+        <TextBlock Grid.Column="2" Text="Admin Studio · 10.6.1.40" VerticalAlignment="Center" Foreground="#FFB0B8C4"/>
+      </Grid>
+    </Border>
 
     <TabControl Background="#FF1B1E24" BorderThickness="0">
 
-        <!-- ============ OVERVIEW ============ -->
-        <TabItem Header="Overview">
-            <Grid Margin="16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+      <!-- OVERVIEW -->
+      <TabItem Header="Overview">
+        <Grid Margin="16">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="SYSTEM " FontSize="28" FontWeight="Bold"/>
+            <TextBlock Text="{Binding SystemStatus}" FontSize="28" FontWeight="Bold" Foreground="#FF4CAF50"/>
+          </StackPanel>
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding Services}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,3">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170"/><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Name}" FontSize="15"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="15" Style="{StaticResource StatusBadge}"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="12" Foreground="#FF9AA3AF"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,16,0,0">
+            <Button Content="START PRODUCTION" FontWeight="Bold" Padding="16,8" Background="#FF2E7D32" Command="{Binding StartAllCommand}"/>
+            <Button Content="STOP ALL" Padding="16,8" Background="#FF8E2A2A" Command="{Binding StopAllCommand}"/>
+            <Button Content="OPEN MONITOR" Padding="16,8" Command="{Binding OpenDashboardCommand}"/>
+            <Button Content="OPEN KIOSK" Padding="16,8" Command="{Binding OpenKioskCommand}"/>
+            <Button Content="OPEN TEST LAB" Padding="16,8" Background="#FF6D4C00" Command="{Binding OpenTestLabCommand}"/>
+            <Button Content="Refresh" Padding="16,8" Command="{Binding RefreshCommand}"/>
+          </StackPanel>
+          <Border Grid.Row="3" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10">
+            <ScrollViewer><TextBlock Text="{Binding StartAllProgress}" FontFamily="Consolas" FontSize="12"/></ScrollViewer>
+          </Border>
+        </Grid>
+      </TabItem>
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
-                    <TextBlock Text="SYSTEM " FontSize="30" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding SystemStatus}" FontSize="30" FontWeight="Bold">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="#FF9AA3AF"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SystemStatus}" Value="READY">
-                                        <Setter Property="Foreground" Value="#FF4CAF50"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding SystemStatus}" Value="DEGRADED">
-                                        <Setter Property="Foreground" Value="#FFFFB300"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding SystemStatus}" Value="FAULT">
-                                        <Setter Property="Foreground" Value="#FFE53935"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-
-                <ItemsControl Grid.Row="1" ItemsSource="{Binding Services}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,3">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="170"/>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="16"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="16" Style="{StaticResource StatusBadge}"/>
-                                <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="12" Foreground="#FF9AA3AF" VerticalAlignment="Center"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,18,0,0">
-                    <Button Content="START ALL" FontWeight="Bold" Padding="18,8" Background="#FF2E7D32"
-                            Command="{Binding StartAllCommand}"/>
-                    <Button Content="STOP ALL" Padding="18,8" Background="#FF8E2A2A"
-                            Command="{Binding StopAllCommand}"/>
-                    <Button Content="OPEN DASHBOARD" Padding="18,8" Command="{Binding OpenDashboardCommand}"/>
-                    <Button Content="OPEN KIOSK" Padding="18,8" Command="{Binding OpenKioskCommand}"/>
-                    <Button Content="Refresh" Padding="18,8" Command="{Binding RefreshCommand}"/>
-                </StackPanel>
-
-                <Border Grid.Row="3" Margin="0,14,0,0" Background="#FF14161A" CornerRadius="4" Padding="10">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <TextBlock Text="{Binding StartAllProgress}" FontFamily="Consolas" FontSize="12"/>
-                    </ScrollViewer>
-                </Border>
-            </Grid>
-        </TabItem>
-
-        <!-- ============ SERVICES ============ -->
-        <TabItem Header="Services">
-            <ItemsControl ItemsSource="{Binding Services}" Margin="16">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="#FF23272F" CornerRadius="6" Padding="12" Margin="0,4">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="170"/>
-                                    <ColumnDefinition Width="130"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="15" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="15" VerticalAlignment="Center"
-                                           Style="{StaticResource StatusBadge}"/>
-                                <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="12" Foreground="#FF9AA3AF"
-                                           VerticalAlignment="Center" TextWrapping="Wrap"/>
-                                <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                    <Button Content="Start" Command="{Binding StartCommand}"/>
-                                    <Button Content="Stop" Command="{Binding StopCommand}"/>
-                                    <Button Content="Restart" Command="{Binding RestartCommand}"/>
-                                    <Button Content="Logs" Command="{Binding LogsCommand}"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </TabItem>
-
-        <!-- ============ CAMERAS ============ -->
-        <TabItem Header="Cameras" DataContext="{Binding Cameras}">
-            <Grid Margin="16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="{Binding RegistryStatus}" VerticalAlignment="Center" Foreground="#FF9AA3AF"/>
-                    <Button Content="Reload" Command="{Binding ReloadCommand}" Margin="12,0"/>
-                </StackPanel>
-                <ItemsControl Grid.Row="1" ItemsSource="{Binding Cameras}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="#FF23272F" CornerRadius="6" Padding="12" Margin="0,4">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding Status}" FontSize="15" Margin="14,0,0,0"
-                                                       Style="{StaticResource StatusBadge}"/>
-                                        </StackPanel>
-                                        <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
-                                        <TextBlock Text="{Binding TestResult}" FontSize="12" Foreground="#FF7FB2E5" Margin="0,3,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Content="Test connection" Command="{Binding TestCommand}"/>
-                                        <Button Content="Preview" Command="{Binding PreviewCommand}"/>
-                                        <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
-                                        <Button Content="Credentials" Command="{Binding EditCredentialsCommand}"/>
-                                        <Button Content="Set as primary" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Border Grid.Row="2" Background="#FF14161A" CornerRadius="4" Padding="10" Margin="0,8,0,0"
-                        MaxHeight="140">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <TextBlock Text="{Binding SwitchProgress}" FontFamily="Consolas" FontSize="12"/>
-                    </ScrollViewer>
-                </Border>
-            </Grid>
-        </TabItem>
-
-        <!-- ============ LOGS ============ -->
-        <TabItem Header="Logs" DataContext="{Binding Logs}">
-            <Grid Margin="16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Zdroj:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox Width="180" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}"
-                              DisplayMemberPath="Name"/>
-                    <TextBlock Text="Filtr:" VerticalAlignment="Center" Margin="14,0,6,0"/>
-                    <TextBox Width="200" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
-                             Background="#FF2C313A" Foreground="#FFDDE1E7" BorderBrush="#FF444B57"/>
-                    <CheckBox Content="Errors only" IsChecked="{Binding ErrorsOnly}" Foreground="#FFDDE1E7"
-                              VerticalAlignment="Center" Margin="14,0,0,0"/>
-                    <CheckBox Content="Live tail" IsChecked="{Binding LiveTail}" Foreground="#FFDDE1E7"
-                              VerticalAlignment="Center" Margin="14,0,0,0"/>
-                    <Button Content="Clear view" Command="{Binding ClearViewCommand}" Margin="14,0,0,0"/>
-                    <Button Content="Open folder" Command="{Binding OpenFolderCommand}"/>
-                </StackPanel>
-                <TextBox Grid.Row="1" Text="{Binding VisibleText, Mode=OneWay}" IsReadOnly="True"
-                         FontFamily="Consolas" FontSize="12"
-                         Background="#FF14161A" Foreground="#FFC9D1D9" BorderThickness="0"
-                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                         TextChanged="LogBox_TextChanged"/>
-            </Grid>
-        </TabItem>
-
-        <!-- ============ SETTINGS ============ -->
-        <TabItem Header="Settings" DataContext="{Binding Settings}">
-            <StackPanel Margin="16" MaxWidth="720" HorizontalAlignment="Left">
-                <TextBlock Text="Cesty a runtime konfigurace" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                <TextBlock Text="Platform repo:"/>
-                <TextBox Text="{Binding PlatformRoot}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-                <TextBlock Text="Monitor repo:"/>
-                <TextBox Text="{Binding MonitorRoot}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-                <TextBlock Text="Detector repo:"/>
-                <TextBox Text="{Binding DetectorRoot}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-                <TextBlock Text="LAN host:"/>
-                <TextBox Text="{Binding LanHost}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-                <TextBlock Text="Produkční stream (MediaMTX path):"/>
-                <TextBox Text="{Binding ProductionStream}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-                <TextBlock Text="Detector start script (prázdné = NOT CONFIGURED do Phase 3):"/>
-                <TextBox Text="{Binding DetectorStartCommand}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-                <Button Content="Uložit" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Padding="18,6"/>
-                <TextBlock Text="{Binding SaveResult}" Margin="0,8,0,0" Foreground="#FF7FB2E5"/>
+      <!-- SCENARIOS -->
+      <TabItem Header="Scenarios" DataContext="{Binding Scenarios}">
+        <Grid Margin="16">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="320"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" DisplayMemberPath="DisplayName"
+                   Background="#FF23272F" Foreground="#FFDDE1E7" BorderThickness="0"/>
+          <DockPanel Grid.Column="1" Margin="16,0,0,0">
+            <StackPanel DockPanel.Dock="Top">
+              <TextBlock Text="{Binding Selected.DisplayName}" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding Selected.Description}" Foreground="#FF9AA3AF" Margin="0,4,0,8" TextWrapping="Wrap"/>
+              <Button Content="RUN SCENARIO" HorizontalAlignment="Left" Padding="16,8" Background="#FF2E7D32"
+                      Command="{Binding RunCommand}" Margin="0,0,0,12"/>
+              <TextBlock Text="Diff oproti aktuálnímu runtime:" FontWeight="SemiBold"/>
             </StackPanel>
-        </TabItem>
+            <Border Background="#FF14161A" Padding="10" CornerRadius="4">
+              <TextBlock Text="{Binding DiffText}" FontFamily="Consolas" FontSize="12"/>
+            </Border>
+          </DockPanel>
+        </Grid>
+      </TabItem>
 
+      <!-- CAMERAS -->
+      <TabItem Header="Cameras" DataContext="{Binding Cameras}">
+        <Grid Margin="16">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="{Binding RegistryStatus}" Foreground="#FF9AA3AF" VerticalAlignment="Center"/>
+            <Button Content="+ ADD CAMERA" Command="{Binding AddCommand}" Margin="12,0,0,0" Background="#FF3A5A8C"/>
+            <Button Content="Reload" Command="{Binding ReloadCommand}"/>
+          </StackPanel>
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding Cameras}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="#FF23272F" CornerRadius="6" Padding="12" Margin="0,4">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Status}" Margin="14,0,0,0" FontSize="15" Style="{StaticResource StatusBadge}"/>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
+                      <TextBlock Text="{Binding TestResult}" FontSize="12" Foreground="#FF7FB2E5" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                      <Button Content="Edit" Command="{Binding EditCommand}"/>
+                      <Button Content="Test" Command="{Binding TestCommand}"/>
+                      <Button Content="Preview" Command="{Binding PreviewCommand}"/>
+                      <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
+                      <Button Content="Credentials" Command="{Binding EditCredentialsCommand}"/>
+                      <Button Content="Set as primary" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Grid.Row="2" Text="{Binding SwitchProgress}" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0"/>
+        </Grid>
+      </TabItem>
+
+      <!-- STREAMS -->
+      <TabItem Header="Streams" DataContext="{Binding Streams}">
+        <Grid Margin="16">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="{Binding Status}" Foreground="#FF9AA3AF" VerticalAlignment="Center"/>
+            <Button Content="+ ADD STREAM" Command="{Binding AddCommand}" Margin="12,0,0,0" Background="#FF3A5A8C"/>
+            <Button Content="Reload" Command="{Binding ReloadCommand}"/>
+          </StackPanel>
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="#FF23272F" CornerRadius="6" Padding="12" Margin="0,4">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Live}" Margin="14,0,0,0" FontSize="15" Style="{StaticResource StatusBadge}"/>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                      <Button Content="Preview" Command="{Binding PreviewCommand}"/>
+                      <Button Content="Apply mapping" Command="{Binding ApplyCommand}" Background="#FF3A5A8C"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Grid>
+      </TabItem>
+
+      <!-- DETECTORS -->
+      <TabItem Header="Detectors" DataContext="{Binding Detectors}">
+        <Grid Margin="16">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="{Binding Status}" Foreground="#FF9AA3AF"/>
+            <Button Content="Reload" Command="{Binding ReloadCommand}" Margin="12,0,0,0"/>
+          </StackPanel>
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="#FF23272F" CornerRadius="6" Padding="12" Margin="0,4">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Status}" Margin="14,0,0,0" Style="{StaticResource StatusBadge}"/>
+                        <TextBlock Text="{Binding Detail}" Margin="8,0,0,0" FontSize="12" Foreground="#FF9AA3AF"/>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                      <Button Content="START" Command="{Binding StartCommand}" Background="#FF2E7D32"/>
+                      <Button Content="STOP" Command="{Binding StopCommand}"/>
+                      <Button Content="OPEN DEBUG VIEW" Command="{Binding DebugCommand}" Background="#FF6D4C00"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border Grid.Row="2" Background="#FF2A2220" Padding="10" CornerRadius="4" Margin="0,8,0,0">
+            <TextBlock Text="{Binding AlgorithmNote}" TextWrapping="Wrap" FontSize="12" Foreground="#FFFFCC80"/>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- CALIBRATION / ROI -->
+      <TabItem Header="Calibration" DataContext="{Binding Calibration}">
+        <Grid Margin="16">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="280"/></Grid.ColumnDefinitions>
+          <Border Background="#FF0E1014" CornerRadius="4" Margin="0,0,12,0"
+                  MouseLeftButtonDown="RoiCanvas_MouseLeftButtonDown" Cursor="Cross">
+            <Grid>
+              <TextBlock Text="Klikni sem pro body ROI polygonu&#x0a;(živý snapshot = Preview kamery v prohlížeči;&#x0a;canvas je kalibrační plátno 1280×720)"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FF6A7380"
+                         TextAlignment="Center"/>
+              <Canvas x:Name="RoiCanvas" ClipToBounds="True"/>
+            </Grid>
+          </Border>
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="ROI profile" FontWeight="SemiBold"/>
+            <TextBox Text="{Binding ProfileId}" Margin="0,4,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+            <TextBlock Text="{Binding Status}" Foreground="#FF9AA3AF" Margin="0,0,0,8"/>
+            <TextBlock Text="{Binding PointsText}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
+            <Button Content="RESET" Command="{Binding ResetCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="FULL FRAME" Command="{Binding FullFrameCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="LOAD" Command="{Binding LoadCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="SAVE AS..." Command="{Binding SaveCommand}" Background="#FF2E7D32" HorizontalAlignment="Stretch"/>
+          </StackPanel>
+        </Grid>
+      </TabItem>
+
+      <!-- NOTIFICATIONS -->
+      <TabItem Header="Notifications" DataContext="{Binding Notifications}">
+        <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
+          <TextBlock Text="Telegram" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+          <CheckBox Content="Enabled" IsChecked="{Binding TelegramEnabled}" Foreground="#FFDDE1E7" Margin="0,0,0,6"/>
+          <TextBlock Text="{Binding CredStatus}" Foreground="#FF7FB2E5" Margin="0,0,0,6"/>
+          <TextBlock Text="Target profile"/>
+          <TextBox Text="{Binding TargetLabel}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+          <CheckBox Content="Fall alarm" IsChecked="{Binding NotifyFall}" Foreground="#FFDDE1E7"/>
+          <CheckBox Content="Barrier event" IsChecked="{Binding NotifyBarrier}" Foreground="#FFDDE1E7"/>
+          <CheckBox Content="Technical errors" IsChecked="{Binding NotifyErrors}" Foreground="#FFDDE1E7" Margin="0,0,0,12"/>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Content="SEND TEST MESSAGE" Command="{Binding TestCommand}" Background="#FF3A5A8C"/>
+            <Button Content="Change credential" Command="{Binding ChangeCredCommand}"/>
+            <Button Content="Save" Command="{Binding SaveCommand}"/>
+          </StackPanel>
+          <TextBlock Text="Event Core publisher" FontSize="16" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding EventCoreStatus}" Foreground="#FFFFCC80" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+      </TabItem>
+
+      <!-- HARDWARE -->
+      <TabItem Header="Hardware" DataContext="{Binding Hardware}">
+        <StackPanel Margin="16">
+          <Border Background="#FF5D2A00" Padding="12" CornerRadius="4" Margin="0,0,0,12">
+            <TextBlock Text="{Binding Banner}" FontWeight="Bold" TextWrapping="Wrap"/>
+          </Border>
+          <CheckBox Content="Enable HARDWARE TEST MODE" IsChecked="{Binding TestMode}" Foreground="#FFFFCC80" Margin="0,0,0,8"/>
+          <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#FF9AA3AF" Margin="0,0,0,12"/>
+          <TextBlock Text="Relay pulse" FontWeight="SemiBold"/>
+          <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
+            <Button Content="Relay 1 PULSE" Command="{Binding Pulse1Command}"/>
+            <Button Content="Relay 2 PULSE" Command="{Binding Pulse2Command}"/>
+            <Button Content="Relay 3 PULSE" Command="{Binding Pulse3Command}"/>
+          </StackPanel>
+          <TextBlock Text="Semaphore" FontWeight="SemiBold"/>
+          <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
+            <Button Content="GREEN" Command="{Binding GreenCommand}" Background="#FF2E7D32"/>
+            <Button Content="RED" Command="{Binding RedCommand}" Background="#FF8E2A2A"/>
+            <Button Content="BUZZER 2 s" Command="{Binding BuzzerCommand}"/>
+            <Button Content="ALL OFF" Command="{Binding AllOffCommand}"/>
+          </StackPanel>
+          <TextBlock Text="Žádná automatická vazba fall detector → relay v tomto úkolu."
+                     Foreground="#FFFFCC80" FontSize="12"/>
+        </StackPanel>
+      </TabItem>
+
+      <!-- LOGS -->
+      <TabItem Header="Logs" DataContext="{Binding Logs}">
+        <Grid Margin="16">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <ComboBox Width="180" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" DisplayMemberPath="Name"/>
+            <TextBox Width="200" Margin="12,0,0,0" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                     Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+            <CheckBox Content="Errors only" IsChecked="{Binding ErrorsOnly}" Foreground="#FFDDE1E7" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            <CheckBox Content="Live tail" IsChecked="{Binding LiveTail}" Foreground="#FFDDE1E7" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            <Button Content="Clear view" Command="{Binding ClearViewCommand}" Margin="12,0,0,0"/>
+            <Button Content="Open folder" Command="{Binding OpenFolderCommand}"/>
+          </StackPanel>
+          <TextBox Grid.Row="1" Text="{Binding VisibleText, Mode=OneWay}" IsReadOnly="True"
+                   FontFamily="Consolas" FontSize="12" Background="#FF14161A" Foreground="#FFC9D1D9"
+                   BorderThickness="0" VerticalScrollBarVisibility="Auto" TextChanged="LogBox_TextChanged"/>
+        </Grid>
+      </TabItem>
+
+      <!-- SYSTEM / SETTINGS -->
+      <TabItem Header="System" DataContext="{Binding Settings}">
+        <StackPanel Margin="16" MaxWidth="720" HorizontalAlignment="Left">
+          <TextBlock Text="Globální cesty" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+          <TextBlock Text="Platform / Monitor / Detector roots"/>
+          <TextBox Text="{Binding PlatformRoot}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+          <TextBox Text="{Binding MonitorRoot}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+          <TextBox Text="{Binding DetectorRoot}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+          <TextBlock Text="LAN host / production stream"/>
+          <TextBox Text="{Binding LanHost}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+          <TextBox Text="{Binding ProductionStream}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+          <Button Content="Uložit" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Padding="18,6"/>
+          <TextBlock Text="{Binding SaveResult}" Margin="0,8,0,0" Foreground="#FF7FB2E5"/>
+          <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" Foreground="#FF9AA3AF"
+                     Text="Lokální runtime config (gitignored): runtime/config/cameras.json, streams.json, detectors.json, roi/, scenarios.json, notifications.json, hardware.json"/>
+        </StackPanel>
+      </TabItem>
     </TabControl>
+  </DockPanel>
 </Window>

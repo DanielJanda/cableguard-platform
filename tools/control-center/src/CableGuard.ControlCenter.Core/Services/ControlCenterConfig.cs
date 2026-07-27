@@ -25,7 +25,13 @@ public sealed class ControlCenterConfig
 
     [JsonIgnore] public string RuntimeDir => Path.Combine(PlatformRoot, "runtime");
     [JsonIgnore] public string LogsDir => Path.Combine(PlatformRoot, "runtime", "logs");
-    [JsonIgnore] public string CamerasJsonPath => Path.Combine(PlatformRoot, "runtime", "config", "cameras.json");
+    [JsonIgnore] public string CamerasJsonPath => RuntimeConfigPaths.Cameras(this);
+    [JsonIgnore] public string StreamsJsonPath => RuntimeConfigPaths.Streams(this);
+    [JsonIgnore] public string DetectorsJsonPath => RuntimeConfigPaths.Detectors(this);
+    [JsonIgnore] public string NotificationsJsonPath => RuntimeConfigPaths.Notifications(this);
+    [JsonIgnore] public string HardwareJsonPath => RuntimeConfigPaths.Hardware(this);
+    [JsonIgnore] public string ScenariosJsonPath => RuntimeConfigPaths.Scenarios(this);
+    [JsonIgnore] public string RoiDir => RuntimeConfigPaths.RoiDir(this);
     [JsonIgnore] public string ConfigJsonPath => Path.Combine(PlatformRoot, "runtime", "config", "controlcenter.json");
     [JsonIgnore] public string MediaMtxLocalYml => Path.Combine(PlatformRoot, "deploy", "mediamtx", "mediamtx.local.yml");
     [JsonIgnore] public string ScriptsDir => Path.Combine(PlatformRoot, "scripts");
