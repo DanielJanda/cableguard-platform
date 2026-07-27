@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "office-fall-test",
+      "display_name": "Office fall detection",
+      "description": "Office camera, fall detector, debug ON, Telegram OFF, relay OFF",
+      "stream_id": "office-test",
+      "detector_ids": ["fall-office-test"],
+      "roi_profile": "office-fall-test",
+      "debug_overlay": true,
+      "telegram": false,
+      "event_core": false,
+      "hardware_test": false
+    },
+    {
+      "id": "zahradky-production",
+      "display_name": "Zahrádky production",
+      "description": "Upper production stream, fall+barrier, Telegram ON, debug OFF",
+      "stream_id": "zahradky-horni-stanice",
+      "detector_ids": ["fall-zahradky-upper", "barrier-zahradky-upper"],
+      "roi_profile": "zahradky-upper-production",
+      "debug_overlay": false,
+      "telegram": true,
+      "event_core": true,
+      "hardware_test": false
+    },
+    {
+      "id": "barrier-hardware-test",
+      "display_name": "Barrier hardware test",
+      "description": "Barrier ON, semaphore TEST MODE, fall OFF",
+      "stream_id": "zahradky-horni-stanice",
+      "detector_ids": ["barrier-zahradky-upper"],
+      "roi_profile": "",
+      "debug_overlay": false,
+      "telegram": false,
+      "event_core": false,
+      "hardware_test": true
+    }
+  ]
+}

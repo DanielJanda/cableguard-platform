@@ -12,15 +12,11 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-
-        // Some GPU/driver combinations composite WPF hardware surfaces as blank;
-        // an admin tool favors reliability over GPU rendering.
         RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
-        // Composition root — no DI framework needed at this size.
         var config = ControlCenterConfig.LoadOrDefault();
         var logger = new ControlCenterLogger(config.LogsDir);
-        logger.Info("Control Center starting.");
+        logger.Info("Control Center (Admin Studio) starting.");
 
         DispatcherUnhandledException += (_, args) =>
         {
@@ -42,15 +38,27 @@ public partial class App : Application
         var mediaMtxApi = new MediaMtxApiClient(http, config.MediaMtxApiBase);
         var persister = new MediaMtxLocalConfigPersister(config.MediaMtxLocalYml);
         var credentials = new WindowsCredentialStore();
+        var hardware = new NotAvailableHardwareAdapter();
 
         var factory = new ComponentFactory(config, processes, prober, scripts, mediaMtxApi);
         var components = factory.CreateAllInStartOrder();
-
         var switchService = new StreamSwitchService(mediaMtxApi, persister, prober, config.WhepBaseLocal);
+        var detectorManager = new DetectorProcessManager(config, logger, processes);
+
+        var mode = new AdminModeViewModel();
         var camerasVm = new CamerasViewModel(config, logger, mediaMtxApi, credentials, switchService);
+        var streamsVm = new StreamsViewModel(config, logger, mediaMtxApi, switchService, () => camerasVm.Registry);
+        var notificationsVm = new NotificationsViewModel(config, logger, credentials);
+        var detectorsVm = new DetectorsViewModel(config, logger, detectorManager,
+            () => StreamsService.Load(config.StreamsJsonPath), () => notificationsVm.Document);
+        var calibrationVm = new CalibrationViewModel(config, logger);
+        var hardwareVm = new HardwareViewModel(logger, hardware);
+        var scenariosVm = new ScenariosViewModel(config, logger, detectorsVm, notificationsVm, hardwareVm);
         var logsVm = new LogsViewModel(config);
         var settingsVm = new SettingsViewModel(config);
-        var mainVm = new MainViewModel(config, logger, components, camerasVm, logsVm, settingsVm);
+
+        var mainVm = new MainViewModel(config, logger, components, mode, camerasVm, streamsVm, detectorsVm,
+            calibrationVm, notificationsVm, hardwareVm, scenariosVm, logsVm, settingsVm);
 
         logger.Info("Composition complete, showing window.");
         var window = new MainWindow(mainVm);

@@ -32,6 +32,7 @@ public sealed class CamerasViewModel : ObservableObject
         _credentials = credentials;
         _switchService = switchService;
         ReloadCommand = new AsyncRelayCommand(ReloadAsync);
+        AddCommand = new RelayCommand(AddCamera);
         _ = ReloadAsync();
     }
 
@@ -39,23 +40,18 @@ public sealed class CamerasViewModel : ObservableObject
     public string RegistryStatus { get => _registryStatus; private set => SetField(ref _registryStatus, value); }
     public string SwitchProgress { get => _switchProgress; private set => SetField(ref _switchProgress, value); }
     public AsyncRelayCommand ReloadCommand { get; }
+    public RelayCommand AddCommand { get; }
+    public CameraRegistryDocument Registry => _registry;
 
     public async Task ReloadAsync()
     {
         Cameras.Clear();
-        try
-        {
-            _registry = CameraRegistryService.Load(_config.CamerasJsonPath);
-        }
-        catch (InvalidOperationException ex)
-        {
-            RegistryStatus = ex.Message;
-            return;
-        }
+        try { _registry = CameraRegistryService.Load(_config.CamerasJsonPath); }
+        catch (InvalidOperationException ex) { RegistryStatus = ex.Message; return; }
 
         if (_registry.Cameras.Count == 0)
         {
-            RegistryStatus = $"Registry je prázdná — vyplň {_config.CamerasJsonPath} (viz config/cameras.example.json).";
+            RegistryStatus = $"Registry prázdná — Add Camera nebo zkopíruj config/cameras.example.json → {_config.CamerasJsonPath}";
             return;
         }
 
@@ -68,12 +64,68 @@ public sealed class CamerasViewModel : ObservableObject
             await row.RefreshAsync(_api);
     }
 
-    public void Preview(CameraEntry camera) =>
-        Process.Start(new ProcessStartInfo(_config.PreviewUrl(camera.MediaMtxPath)) { UseShellExecute = true });
+    public void Persist()
+    {
+        CameraRegistryService.Save(_registry, _config.CamerasJsonPath);
+        _logger.Info("[CAMERAS] Saved cameras.json");
+    }
+
+    private void AddCamera()
+    {
+        var cam = new CameraEntry
+        {
+            CameraId = $"camera-{DateTime.Now:HHmmss}",
+            DisplayName = "Nová kamera",
+            SiteId = "office",
+            StationId = "test",
+            Host = "10.6.1.123",
+            RtspPort = 554,
+            Profile = "Streaming/Channels/102",
+            Transport = "tcp",
+            CredentialRef = "CableGuard.Camera.new",
+            MediaMtxPath = "office-test",
+            Enabled = true,
+        };
+        EditCamera(cam, isNew: true);
+    }
+
+    public void EditCamera(CameraEntry camera, bool isNew = false)
+    {
+        var dlg = new Views.CameraEditDialog(camera);
+        if (dlg.ShowDialog() != true) return;
+        var edited = dlg.Result;
+        var errors = CameraRegistryService.ValidateCamera(edited);
+        if (errors.Count > 0)
+        {
+            MessageBox.Show(string.Join("\n", errors), "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (isNew)
+        {
+            if (_registry.Cameras.Any(c => c.CameraId == edited.CameraId))
+            {
+                MessageBox.Show("camera_id už existuje.");
+                return;
+            }
+            _registry.Cameras.Add(edited);
+        }
+        else
+        {
+            var idx = _registry.Cameras.FindIndex(c => c.CameraId == camera.CameraId);
+            if (idx >= 0) _registry.Cameras[idx] = edited;
+        }
+        Persist();
+        _ = ReloadAsync();
+    }
+
+    public void Preview(CameraEntry camera)
+    {
+        var path = string.IsNullOrWhiteSpace(camera.MediaMtxPath) ? camera.CameraId : camera.MediaMtxPath;
+        Process.Start(new ProcessStartInfo(_config.PreviewUrl(path)) { UseShellExecute = true });
+    }
 
     public async Task<string> TestConnectionAsync(CameraEntry camera)
     {
-        // Honest MVP connectivity test: TCP reach of the RTSP port + MediaMTX path readiness.
         string tcpResult;
         try
         {
@@ -87,11 +139,12 @@ public sealed class CamerasViewModel : ObservableObject
         {
             tcpResult = $"TCP {camera.Host}:{camera.RtspPort} failed ({ex.SocketErrorCode})";
         }
-        var ready = await _api.IsPathReadyAsync(camera.MediaMtxPath);
+        var path = string.IsNullOrWhiteSpace(camera.MediaMtxPath) ? camera.CameraId : camera.MediaMtxPath;
+        var ready = await _api.IsPathReadyAsync(path);
         var pathResult = ready switch
         {
-            true => $"path '{camera.MediaMtxPath}' READY",
-            false => $"path '{camera.MediaMtxPath}' NOT ready",
+            true => $"path '{path}' READY",
+            false => $"path '{path}' NOT ready",
             null => "MediaMTX API unreachable",
         };
         return $"{tcpResult}; {pathResult}";
@@ -100,8 +153,7 @@ public sealed class CamerasViewModel : ObservableObject
     public void ToggleEnabled(CameraEntry camera)
     {
         camera.Enabled = !camera.Enabled;
-        CameraRegistryService.Save(_registry, _config.CamerasJsonPath);
-        _logger.Info($"Camera {camera.CameraId} enabled={camera.Enabled}");
+        Persist();
         _ = ReloadAsync();
     }
 
@@ -125,7 +177,7 @@ public sealed class CamerasViewModel : ObservableObject
         var current = CameraRegistryService.ResolvePrimaryCamera(_registry, _config.ProductionStream);
         if (current?.CameraId == camera.CameraId)
         {
-            MessageBox.Show("Tato kamera už je primární.", "Set as primary", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Tato kamera už je primární.", "Set as primary");
             return;
         }
 
@@ -133,10 +185,8 @@ public sealed class CamerasViewModel : ObservableObject
             $"Set as primary source for:\n{_config.ProductionStream}\n\n" +
             $"Current: {current?.DisplayName ?? "?"} ({current?.Host ?? "?"})\n" +
             $"Switch to: {camera.DisplayName} ({camera.Host})\n\n" +
-            "MediaMTX path se přepne za běhu; při selhání proběhne automatický rollback.\n" +
-            "Detector konfigurace se nemění.",
-            "Potvrdit přepnutí primární kamery",
-            MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            "Detector config se nemění.",
+            "Potvrdit přepnutí", MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.OK) return;
 
         SwitchProgress = "";
@@ -151,9 +201,10 @@ public sealed class CamerasViewModel : ObservableObject
             saveRegistry: r => CameraRegistryService.Save(r, _config.CamerasJsonPath),
             progress: progress);
 
-        var icon = result.Success ? MessageBoxImage.Information : MessageBoxImage.Error;
-        var title = result.Success ? "Přepnutí úspěšné" : (result.RolledBack ? "Přepnutí selhalo — rollback" : "Přepnutí selhalo");
-        MessageBox.Show(result.Message, title, MessageBoxButton.OK, icon);
+        MessageBox.Show(result.Message,
+            result.Success ? "OK" : (result.RolledBack ? "Rollback" : "Failed"),
+            MessageBoxButton.OK,
+            result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
         await ReloadAsync();
     }
 }
@@ -174,12 +225,14 @@ public sealed class CameraRowViewModel : ObservableObject
         ToggleEnabledCommand = new RelayCommand(() => _parent.ToggleEnabled(Camera));
         SetPrimaryCommand = new AsyncRelayCommand(() => _parent.SetAsPrimaryAsync(Camera), () => Camera.Enabled && !IsPrimary);
         EditCredentialsCommand = new RelayCommand(EditCredentials);
+        EditCommand = new RelayCommand(() => _parent.EditCamera(Camera));
     }
 
     public CameraEntry Camera { get; }
     public bool IsPrimary { get; }
     public string Title => IsPrimary ? $"{Camera.DisplayName}  ★ PRIMARY" : Camera.DisplayName;
-    public string Subtitle => $"IP: {Camera.Host}:{Camera.RtspPort}   MediaMTX path: {Camera.MediaMtxPath}   {(Camera.Enabled ? "" : "(disabled)")}";
+    public string Subtitle =>
+        $"IP: {Camera.Host}:{Camera.RtspPort}  profile: {Camera.Profile}  transport: {Camera.Transport}  path: {Camera.MediaMtxPath}  {(Camera.Enabled ? "" : "(disabled)")}";
     public string EnableLabel => Camera.Enabled ? "Disable" : "Enable";
     public string Status { get => _status; private set => SetField(ref _status, value); }
     public string TestResult { get => _testResult; private set => SetField(ref _testResult, value); }
@@ -189,11 +242,13 @@ public sealed class CameraRowViewModel : ObservableObject
     public RelayCommand ToggleEnabledCommand { get; }
     public AsyncRelayCommand SetPrimaryCommand { get; }
     public RelayCommand EditCredentialsCommand { get; }
+    public RelayCommand EditCommand { get; }
 
     public async Task RefreshAsync(IMediaMtxApi api)
     {
         if (!Camera.Enabled) { Status = "DISABLED"; return; }
-        var ready = await api.IsPathReadyAsync(Camera.MediaMtxPath);
+        var path = string.IsNullOrWhiteSpace(Camera.MediaMtxPath) ? Camera.CameraId : Camera.MediaMtxPath;
+        var ready = await api.IsPathReadyAsync(path);
         Status = ready switch { true => "LIVE", false => "OFFLINE", null => "MediaMTX?" };
     }
 

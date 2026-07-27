@@ -1,0 +1,13 @@
+{
+  "id": "office-fall-test",
+  "display_name": "Office fall test ROI",
+  "stream_id": "office-test",
+  "detector_type": "fall",
+  "is_production": false,
+  "points": [
+    { "x": 80, "y": 60 },
+    { "x": 1200, "y": 60 },
+    { "x": 1200, "y": 680 },
+    { "x": 80, "y": 680 }
+  ]
+}

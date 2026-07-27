@@ -9,6 +9,7 @@
       "host": "10.2.4.92",
       "rtsp_port": 554,
       "profile": "Streaming/Channels/102",
+      "transport": "tcp",
       "enabled": true,
       "credential_ref": "CableGuard.Camera.zahradky-upper-92",
       "mediamtx_path": "zahradky-horni-stanice-92"
@@ -21,9 +22,23 @@
       "host": "10.2.4.90",
       "rtsp_port": 554,
       "profile": "Streaming/Channels/102",
+      "transport": "tcp",
       "enabled": true,
       "credential_ref": "CableGuard.Camera.zahradky-upper-90",
       "mediamtx_path": "zahradky-horni-stanice-90"
+    },
+    {
+      "camera_id": "office-test-1",
+      "display_name": "Kancelář test kamera",
+      "site_id": "office",
+      "station_id": "desk",
+      "host": "10.6.1.123",
+      "rtsp_port": 554,
+      "profile": "Streaming/Channels/102",
+      "transport": "tcp",
+      "enabled": false,
+      "credential_ref": "CableGuard.Camera.office-test-1",
+      "mediamtx_path": "office-test"
     }
   ],
   "stream_mappings": [

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "telegram_enabled": false,
+  "telegram_credential_ref": "CableGuard.Telegram.AdminAlerts",
+  "telegram_target_label": "CableGuard Admin Alerts",
+  "notify_fall": true,
+  "notify_barrier": true,
+  "notify_technical_errors": true,
+  "event_core_publisher_enabled": false
+}
