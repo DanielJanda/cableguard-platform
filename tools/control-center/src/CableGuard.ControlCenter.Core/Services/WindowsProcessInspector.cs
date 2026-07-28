@@ -14,7 +14,15 @@ public sealed class WindowsProcessInspector : IProcessInspector
             var text = File.ReadAllText(pidFilePath).Trim();
             if (!int.TryParse(text, out var pid)) return null;
             using var proc = Process.GetProcessById(pid);
-            return proc.HasExited ? null : pid;
+            try
+            {
+                return proc.HasExited ? null : pid;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // LocalSystem process: it exists (GetProcessById found it) but exit code is denied to us.
+                return pid;
+            }
         }
         catch (ArgumentException) { return null; }   // no process with that id
         catch (InvalidOperationException) { return null; }
@@ -79,7 +87,7 @@ public sealed class WindowsProcessInspector : IProcessInspector
             : processName;
         try
         {
-            return Process.GetProcessesByName(want)
+            var found = Process.GetProcessesByName(want)
                 .Where(p =>
                 {
                     try { return !p.HasExited; }
@@ -89,8 +97,26 @@ public sealed class WindowsProcessInspector : IProcessInspector
                 .Distinct()
                 .OrderBy(id => id)
                 .ToList();
+            if (found.Count > 0) return found;
         }
         catch
+        {
+            // Fall through to WMI.
+        }
+
+        // Service-hosted processes run as LocalSystem, where HasExited can be denied to us.
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                $"SELECT ProcessId FROM Win32_Process WHERE Name = '{want.Replace("'", "''")}.exe'");
+            return searcher.Get()
+                .Cast<ManagementObject>()
+                .Select(o => Convert.ToInt32(o["ProcessId"]))
+                .Distinct()
+                .OrderBy(id => id)
+                .ToList();
+        }
+        catch (ManagementException)
         {
             return Array.Empty<int>();
         }
