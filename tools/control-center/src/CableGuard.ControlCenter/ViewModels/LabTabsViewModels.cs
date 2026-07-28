@@ -554,6 +554,7 @@ public sealed class HardwareViewModel : ObservableObject
     private bool _testMode;
     private string _status = "";
     private string _deviceLine = "";
+    private string _diagnosticsPreview = "";
     private string _lastOp = "—";
 
     public HardwareViewModel(ControlCenterLogger logger, IHardwareAdapter adapter)
@@ -561,6 +562,7 @@ public sealed class HardwareViewModel : ObservableObject
         _logger = logger; _adapter = adapter;
         _status = adapter.StatusDetail;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        CopyDiagnosticsCommand = new RelayCommand(CopyDiagnostics);
         Pulse1Command = new AsyncRelayCommand(() => Pulse(1), () => CanWrite);
         Pulse2Command = new AsyncRelayCommand(() => Pulse(2), () => CanWrite);
         Pulse3Command = new AsyncRelayCommand(() => Pulse(3), () => CanWrite);
@@ -584,7 +586,6 @@ public sealed class HardwareViewModel : ObservableObject
                 {
                     try
                     {
-                        // Entering TEST MODE: verify connection and force ALL OFF when available.
                         _ = EnterTestModeAsync();
                     }
                     catch (Exception ex)
@@ -599,12 +600,16 @@ public sealed class HardwareViewModel : ObservableObject
 
     public string Status { get => _status; private set => SetField(ref _status, value); }
     public string DeviceLine { get => _deviceLine; private set => SetField(ref _deviceLine, value); }
+    public string DiagnosticsPreview { get => _diagnosticsPreview; private set => SetField(ref _diagnosticsPreview, value); }
     public string LastOp { get => _lastOp; private set => SetField(ref _lastOp, value); }
-    public string Banner => "⚠ HARDWARE TEST MODE — manuální zásahy jen s potvrzením, auto-off ≤500 ms, žádná vazba detector→relay";
+    public string Banner =>
+        "⚠ HARDWARE TEST MODE — manuální zásahy jen s potvrzením, auto-off ≤250 ms, žádná vazba detector→relay. " +
+        "Green/Red/Buzzer disabled bez mappingu. CONNECTED jen po úspěšném read-only probe.";
     public bool CanWrite => TestMode && _adapter.IsAvailable;
     public bool CanSemantic => CanWrite && (_adapter as AdvantechUsb4761Adapter)?.MappingConfigured == true;
 
     public AsyncRelayCommand RefreshCommand { get; }
+    public RelayCommand CopyDiagnosticsCommand { get; }
     public AsyncRelayCommand Pulse1Command { get; }
     public AsyncRelayCommand Pulse2Command { get; }
     public AsyncRelayCommand Pulse3Command { get; }
@@ -631,8 +636,12 @@ public sealed class HardwareViewModel : ObservableObject
         if (_adapter is AdvantechUsb4761Adapter adv)
         {
             var d = adv.Discovery;
-            DeviceLine = $"Device: {d.Status} | Model: {d.Model} | Serial: {d.SerialMasked} | " +
-                         $"Driver: {d.DriverStatus} | Relays: {d.RelayCount} | DI: {d.DiCount}";
+            DeviceLine =
+                $"Status: {d.Status} | Model: {d.Model} | SDK: {d.SdkPath} | Arch: {d.ProcessArch} | " +
+                $"DI={d.DiCount} [{FormatBits(d.DiValues)}] | DO={d.DoCount} [{FormatBits(d.DoValues)}] | " +
+                $"err={d.ErrorCode} | refresh={adv.LastSuccessfulRefresh?.ToLocalTime():HH:mm:ss} | " +
+                $"mapping={(adv.MappingConfigured ? "OK" : "NOT CONFIGURED")}";
+            DiagnosticsPreview = adv.BuildDiagnosticsText();
             LastOp = adv.LastOperation;
             if (!string.IsNullOrWhiteSpace(adv.LastError))
                 Status = adv.StatusDetail;
@@ -640,18 +649,31 @@ public sealed class HardwareViewModel : ObservableObject
         else
         {
             DeviceLine = _adapter.IsAvailable ? "Device: CONNECTED" : "Device: NOT AVAILABLE";
+            DiagnosticsPreview = _adapter.StatusDetail;
         }
-
-        try
-        {
-            var di = await _adapter.ReadDigitalInputsAsync();
-            if (di.Count > 0)
-                DeviceLine += " | DI: " + string.Join(" ", di.Select(kv => $"{kv.Key}={(kv.Value ? 1 : 0)}"));
-        }
-        catch { /* discovery-only ok */ }
 
         RaiseCanExecutes();
     }
+
+    private void CopyDiagnostics()
+    {
+        var text = _adapter is AdvantechUsb4761Adapter adv
+            ? adv.BuildDiagnosticsText()
+            : Status;
+        try
+        {
+            Clipboard.SetText(text);
+            LastOp = "diagnostics copied";
+            _logger.Info("[HW] Diagnostics copied to clipboard");
+        }
+        catch (Exception ex)
+        {
+            Status = $"Copy failed: {ex.Message}";
+        }
+    }
+
+    private static string FormatBits(IReadOnlyList<bool> bits) =>
+        bits.Count == 0 ? "—" : string.Join("", bits.Select(b => b ? "1" : "0"));
 
     private void RaiseCanExecutes()
     {
@@ -666,11 +688,11 @@ public sealed class HardwareViewModel : ObservableObject
 
     private async Task Pulse(int ch)
     {
-        if (!Confirm($"Pulse relay {ch} (max 500 ms)?")) return;
+        if (!Confirm($"Pulse relay {ch} (max 250 ms)?")) return;
         try
         {
             HardwareSafety.EnsureTestMode(_adapter);
-            await _adapter.PulseRelayAsync(ch, HardwareSafety.ClampPulse(TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500)));
+            await _adapter.PulseRelayAsync(ch, HardwareSafety.ClampPulse(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250)));
             LastOp = $"pulse {ch}";
             _logger.Info($"[HW] Pulse relay {ch} OK");
             await RefreshAsync();
@@ -690,7 +712,7 @@ public sealed class HardwareViewModel : ObservableObject
                 "Hardware", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (!Confirm($"Pulse semaphore {color} (≤500 ms)?")) return;
+        if (!Confirm($"Pulse semaphore {color} (≤250 ms)?")) return;
         try
         {
             HardwareSafety.EnsureTestMode(_adapter);
