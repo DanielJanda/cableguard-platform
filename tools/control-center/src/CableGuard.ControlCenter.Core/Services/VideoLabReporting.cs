@@ -25,6 +25,26 @@ public static class ConfigFingerprint
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
+    public static object BuildStreamLatencyPayload(
+        string? cameraId,
+        string streamId,
+        string mediaMtxPath,
+        int? width,
+        int? height,
+        double? fps,
+        string? codec)
+        => new
+        {
+            camera_id = cameraId ?? "",
+            stream_id = streamId,
+            mediamtx_path = mediaMtxPath,
+            width,
+            height,
+            fps,
+            codec = codec ?? "",
+            method_scope = "glass_to_glass_manual",
+        };
+
     public static object BuildQualificationPayload(
         string cameraId,
         string profile,

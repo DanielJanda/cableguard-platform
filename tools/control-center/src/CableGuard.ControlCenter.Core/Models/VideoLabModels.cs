@@ -94,10 +94,15 @@ public sealed class GlassToGlassSample
 {
     public DateTimeOffset MeasuredAtUtc { get; set; }
     public string StreamId { get; set; } = "";
-    public string Method { get; set; } = "MANUAL"; // MANUAL | EXPERIMENTAL_AUTO
+    public string CameraId { get; set; } = "";
+    /// <summary>manual | experimental_auto</summary>
+    public string Method { get; set; } = "manual";
     public double LatencyMs { get; set; }
     public string OperatorNote { get; set; } = "";
+    public string ConfigurationFingerprint { get; set; } = "";
     public bool IsAuthoritative { get; set; } // false for experimental auto
+    /// <summary>True when stream configuration fingerprint no longer matches the sample.</summary>
+    public bool IsOutdated { get; set; }
 }
 
 public sealed class DetectorFreshnessSnapshot

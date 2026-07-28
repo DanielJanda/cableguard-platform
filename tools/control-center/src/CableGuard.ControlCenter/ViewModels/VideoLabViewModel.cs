@@ -65,7 +65,7 @@ public sealed class VideoLabViewModel : ObservableObject
         InjectRestartEventCoreCommand = new AsyncRelayCommand(() => InjectAsync(ComponentId.EventCore));
         InjectRestartMonitorCommand = new AsyncRelayCommand(() => InjectAsync(ComponentId.Monitor));
         AuditCameraCommand = new AsyncRelayCommand(AuditCameraAsync);
-        RefreshResourcesCommand = new RelayCommand(RefreshResources);
+        RefreshResourcesCommand = new AsyncRelayCommand(RefreshResourcesAsync);
         RunAbBenchmarkCommand = new AsyncRelayCommand(RunAbBenchmarkAsync);
 
         // Do not Clear() StreamIds on a timer while ComboBox is TwoWay-bound — that caused
@@ -124,7 +124,7 @@ public sealed class VideoLabViewModel : ObservableObject
     public AsyncRelayCommand InjectRestartEventCoreCommand { get; }
     public AsyncRelayCommand InjectRestartMonitorCommand { get; }
     public AsyncRelayCommand AuditCameraCommand { get; }
-    public RelayCommand RefreshResourcesCommand { get; }
+    public AsyncRelayCommand RefreshResourcesCommand { get; }
     public AsyncRelayCommand RunAbBenchmarkCommand { get; }
 
     public StreamLiveMetrics? LastMetrics { get; private set; }
@@ -171,7 +171,9 @@ public sealed class VideoLabViewModel : ObservableObject
                 $"DETECTOR FRESHNESS (≠ G2G)\n  see panel below";
 
             G2GDisplay = metrics.GlassToGlassLatencyMs.Kind == MeasurementKind.NotMeasured
-                ? "GLASS-TO-GLASS LATENCY: NOT MEASURED"
+                ? (metrics.GlassToGlassLatencyMs.Note.Contains("OUTDATED", StringComparison.OrdinalIgnoreCase)
+                    ? $"GLASS-TO-GLASS LATENCY: OUTDATED — {metrics.GlassToGlassLatencyMs.Note}"
+                    : "GLASS-TO-GLASS LATENCY: NOT MEASURED")
                 : $"GLASS-TO-GLASS LATENCY: {metrics.GlassToGlassLatencyMs} (MANUAL)";
 
             var fresh = DetectorFreshnessProvider.Get("fall-zahradky-upper");
@@ -249,22 +251,39 @@ public sealed class VideoLabViewModel : ObservableObject
         Process.Start(new ProcessStartInfo($"file:///{html.Replace('\\', '/')}") { UseShellExecute = true });
         _logger.Info("[VIDEO LAB] Opened manual latency pattern (fullscreen recommended)");
         MessageBox.Show(
-            "1) Put the pattern on a display in the camera's view.\n" +
-            "2) Watch the received stream (Preview / probe).\n" +
-            "3) Enter measured latency (ms) below and click Record Manual Latency.\n\n" +
-            "This is a MANUAL MEASUREMENT. OCR is not used as sole source.",
-            "Manual Latency Test");
+            "Ruční měření glass-to-glass latence\n\n" +
+            "1) Vyber stream\n" +
+            "2) Ověř, že MediaMTX path je READY\n" +
+            "3) Otevři referenční časový vzor (toto okno)\n" +
+            "4) Umísti vzor do záběru kamery\n" +
+            "5) Otevři přijatý stream (WHEP sonda / náhled)\n" +
+            "6) Porovnej fyzický čas a čas v obraze\n" +
+            "7) Zadej rozdíl v ms\n" +
+            "8) Ulož ruční latenci\n\n" +
+            "RTT / jitter / FPS / bitrate NEJSOU G2G latence.\n" +
+            "Bez fyzické reference zůstává NOT MEASURED.",
+            "Ruční měření glass-to-glass latence");
     }
 
     private void RecordManualLatency()
     {
         if (!double.TryParse(ManualLatencyText.Trim(), out var ms) || ms < 0 || ms > 60_000)
         {
-            MessageBox.Show("Enter latency in milliseconds (0–60000).");
+            MessageBox.Show("Zadej latenci v milisekundách (0–60000).");
             return;
         }
-        _collector.RecordManualLatency(SelectedStreamId, ms, "manual visual comparison");
-        _logger.Info($"[VIDEO LAB] Manual G2G sample {ms} ms for {SelectedStreamId}");
+        var stream = _streams().Streams.FirstOrDefault(s => s.StreamId == SelectedStreamId)
+                     ?? new LogicalStream { StreamId = SelectedStreamId, MediaMtxPath = SelectedStreamId };
+        var camId = stream.CameraId;
+        var m = LastMetrics;
+        var fp = ConfigFingerprint.Compute(ConfigFingerprint.BuildStreamLatencyPayload(
+            camId, stream.StreamId, stream.MediaMtxPath,
+            m?.ResolutionWidth.Kind == MeasurementKind.Measured ? (int?)m.ResolutionWidth.Value : null,
+            m?.ResolutionHeight.Kind == MeasurementKind.Measured ? (int?)m.ResolutionHeight.Value : null,
+            m?.ReceivedFps.Kind == MeasurementKind.Measured ? m.ReceivedFps.Value : null,
+            m?.Codec.Note));
+        _collector.RecordManualLatency(SelectedStreamId, camId, ms, fp, "manual visual comparison");
+        _logger.Info($"[VIDEO LAB] Manual G2G sample {ms} ms for {SelectedStreamId} fp={fp[..Math.Min(12, fp.Length)]}…");
         _ = RefreshAsync();
     }
 
@@ -288,7 +307,8 @@ public sealed class VideoLabViewModel : ObservableObject
         var fp = ConfigFingerprint.Compute(ConfigFingerprint.BuildQualificationPayload(
             m.SourceCameraId, cam?.Profile ?? "", m.Codec.Note, null, null, null,
             m.MediaMtxPath, cam?.Transport ?? "tcp", "fall-zahradky-upper", null, null, null));
-        var g2g = _collector.GlassToGlassSamples.LastOrDefault(s => s.StreamId == SelectedStreamId && s.IsAuthoritative);
+        var g2g = _collector.GlassToGlassSamples.LastOrDefault(s =>
+            s.StreamId == SelectedStreamId && s.IsAuthoritative && !s.IsOutdated);
         var report = QualificationEngine.Evaluate(
             m, _collector.Thresholds, g2g is not null, g2g?.LatencyMs, fp);
 
@@ -385,28 +405,45 @@ public sealed class VideoLabViewModel : ObservableObject
         ProfileAudit += "\n\nNever treat PTS/DTS as UTC capture timestamp unless the camera provides correlated time.";
     }
 
-    private void RefreshResources()
+    private async Task RefreshResourcesAsync()
     {
-        var pids = new Dictionary<string, int?>();
-        foreach (var c in _components)
+        // Never block the UI thread with GetAwaiter().GetResult() — that deadlocks WPF
+        // when GetStatusAsync resumes on the captured SynchronizationContext.
+        ResourceText = "Načítám zdroje…";
+        try
         {
-            try
+            var pids = new Dictionary<string, int?>();
+            foreach (var c in _components)
             {
-                var snap = c.GetStatusAsync().GetAwaiter().GetResult();
-                pids[c.DisplayName] = snap.ProcessId;
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    var snap = await c.GetStatusAsync(cts.Token).ConfigureAwait(true);
+                    pids[c.DisplayName] = snap.ProcessId;
+                }
+                catch (Exception ex)
+                {
+                    pids[c.DisplayName] = null;
+                    _logger.Warn($"[VIDEO LAB] Status {c.DisplayName}: {ex.Message}");
+                }
             }
-            catch { pids[c.DisplayName] = null; }
+
+            var snapRes = await Task.Run(() => ResourceMonitor.Capture(pids)).ConfigureAwait(true);
+            var lines = new List<string>
+            {
+                "RESOURCE MONITOR (working set only; CPU%/GPU/VRAM NOT AVAILABLE without PerformanceCounter/NVML)",
+                $"System CPU: {(snapRes.SystemCpuPercent?.ToString("0.0") ?? "NOT AVAILABLE")}",
+                $"System RAM: {(snapRes.SystemRamUsedMb?.ToString("0") ?? "NOT AVAILABLE")} / {(snapRes.SystemRamTotalMb?.ToString("0") ?? "?")} MB",
+            };
+            foreach (var p in snapRes.Processes.Values)
+                lines.Add($"  {p.Name}: PID={p.Pid?.ToString() ?? "—"}  WS={(p.WorkingSetMb?.ToString("0.0") ?? "—")} MB  CPU={(p.CpuPercent?.ToString("0.0") ?? "NOT AVAILABLE")}");
+            ResourceText = string.Join("\n", lines);
         }
-        var snapRes = ResourceMonitor.Capture(pids);
-        var lines = new List<string>
+        catch (Exception ex)
         {
-            "RESOURCE MONITOR (working set only; CPU%/GPU/VRAM NOT AVAILABLE without PerformanceCounter/NVML)",
-            $"System CPU: {(snapRes.SystemCpuPercent?.ToString("0.0") ?? "NOT AVAILABLE")}",
-            $"System RAM: {(snapRes.SystemRamUsedMb?.ToString("0") ?? "NOT AVAILABLE")} / {(snapRes.SystemRamTotalMb?.ToString("0") ?? "?")} MB",
-        };
-        foreach (var p in snapRes.Processes.Values)
-            lines.Add($"  {p.Name}: PID={p.Pid?.ToString() ?? "—"}  WS={(p.WorkingSetMb?.ToString("0.0") ?? "—")} MB  CPU={(p.CpuPercent?.ToString("0.0") ?? "NOT AVAILABLE")}");
-        ResourceText = string.Join("\n", lines);
+            ResourceText = $"Chyba při obnově zdrojů: {ex.Message}";
+            _logger.Error($"[VIDEO LAB] RefreshResources failed: {ex.Message}");
+        }
     }
 
     private async Task RunAbBenchmarkAsync()

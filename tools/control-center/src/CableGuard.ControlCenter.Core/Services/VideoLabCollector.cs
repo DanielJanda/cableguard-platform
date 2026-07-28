@@ -23,17 +23,41 @@ public sealed class VideoLabCollector
     public EngineeringThresholds Thresholds { get; set; } = new();
     public IReadOnlyList<GlassToGlassSample> GlassToGlassSamples => _g2g;
 
-    public void RecordManualLatency(string streamId, double latencyMs, string note)
+    public void RecordManualLatency(
+        string streamId,
+        string cameraId,
+        double latencyMs,
+        string configurationFingerprint,
+        string note)
     {
+        foreach (var old in _g2g.Where(s => s.StreamId == streamId))
+            old.IsAuthoritative = false;
+
         _g2g.Add(new GlassToGlassSample
         {
             MeasuredAtUtc = DateTimeOffset.UtcNow,
             StreamId = streamId,
-            Method = "MANUAL",
+            CameraId = cameraId ?? "",
+            Method = "manual",
             LatencyMs = latencyMs,
             OperatorNote = note,
+            ConfigurationFingerprint = configurationFingerprint ?? "",
             IsAuthoritative = true,
+            IsOutdated = false,
         });
+    }
+
+    public static void MarkOutdatedIfFingerprintChanged(
+        IEnumerable<GlassToGlassSample> samples,
+        string streamId,
+        string currentFingerprint)
+    {
+        foreach (var s in samples.Where(x => x.StreamId == streamId && x.IsAuthoritative))
+        {
+            if (string.IsNullOrWhiteSpace(s.ConfigurationFingerprint)) continue;
+            if (!string.Equals(s.ConfigurationFingerprint, currentFingerprint, StringComparison.Ordinal))
+                s.IsOutdated = true;
+        }
     }
 
     public async Task<StreamLiveMetrics> CollectAsync(LogicalStream stream, string? cameraId, CancellationToken ct = default)
@@ -108,12 +132,26 @@ public sealed class VideoLabCollector
             _ = metricsDetail;
         }
 
-        // Browser/WebRTC probe fields stay NOT AVAILABLE until probe posts stats.
-        // G2G: only if manual sample exists for this stream
+        // G2G: only if manual sample exists for this stream and fingerprint still matches.
         var sample = _g2g.LastOrDefault(s => s.StreamId == stream.StreamId && s.IsAuthoritative);
+        if (sample is not null)
+        {
+            var camId = cameraId ?? stream.CameraId;
+            var fp = ConfigFingerprint.Compute(ConfigFingerprint.BuildStreamLatencyPayload(
+                camId, stream.StreamId, stream.MediaMtxPath,
+                m.ResolutionWidth.Kind == MeasurementKind.Measured ? (int?)m.ResolutionWidth.Value : null,
+                m.ResolutionHeight.Kind == MeasurementKind.Measured ? (int?)m.ResolutionHeight.Value : null,
+                m.ReceivedFps.Kind == MeasurementKind.Measured ? m.ReceivedFps.Value : null,
+                m.Codec.Note));
+            MarkOutdatedIfFingerprintChanged(_g2g, stream.StreamId, fp);
+            sample = _g2g.LastOrDefault(s => s.StreamId == stream.StreamId && s.IsAuthoritative);
+        }
+
         m.GlassToGlassLatencyMs = sample is null
             ? MetricValue.NotMeasured("No physical visual reference measurement recorded")
-            : MetricValue.Measured(sample.LatencyMs, "ms", $"MANUAL @ {sample.MeasuredAtUtc:u}");
+            : sample.IsOutdated
+                ? MetricValue.NotMeasured($"OUTDATED – konfigurace streamu se změnila (bylo {sample.LatencyMs:0} ms MANUAL)")
+                : MetricValue.Measured(sample.LatencyMs, "ms", $"manual @ {sample.MeasuredAtUtc:u}");
 
         var iceConnected = string.Equals(m.IceState, "connected", StringComparison.OrdinalIgnoreCase);
         m.Health = VideoHealthEvaluator.Evaluate(
