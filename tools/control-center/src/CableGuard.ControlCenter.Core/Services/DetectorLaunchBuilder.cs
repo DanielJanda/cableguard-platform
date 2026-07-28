@@ -66,11 +66,13 @@ public static class DetectorLaunchBuilder
                 env["CABLEGUARD_ROI_SHA256"] = prepared.RoiSha256;
             }
 
-            // Heartbeat reporter (optional) — never enables Telegram/relay/alarm publisher here.
+            // Office Test Lab: heartbeat always; alarms only when PublishEventCore; never Telegram/relay.
             if (string.Equals(instance.Id, "fall-office-test", StringComparison.OrdinalIgnoreCase))
             {
                 env["CABLEGUARD_RUNTIME_STATUS_ENABLED"] = "true";
-                env["CABLEGUARD_EVENT_CORE_HEARTBEAT_ONLY"] = "true";
+                env["CABLEGUARD_TEST_MODE"] = "true";
+                env["CABLEGUARD_EVENT_CORE_HEARTBEAT_ONLY"] =
+                    instance.PublishEventCore ? "false" : "true";
             }
 
             var debug = forceDebug || instance.DebugOverlay;

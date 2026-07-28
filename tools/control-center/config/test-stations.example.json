@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "stations": [
+    {
+      "station_id": "office-test",
+      "site_id": "office",
+      "display_name": "Kancelář – test pádu",
+      "camera_id": "camera-122727",
+      "video_stream": "office-test-camera",
+      "fall_service_id": "fall-office-test",
+      "roi_profile": "office-fall-test",
+      "monitor_path": "/test-lab/office-fall",
+      "mode": "test"
+    }
+  ]
+}

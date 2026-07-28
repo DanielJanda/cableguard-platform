@@ -43,6 +43,10 @@ def get_events(
     event_type: str | None = None,
     status_filter: str | None = Query(default=None, alias="status"),
     service_id: str | None = None,
+    include_test_events: bool = Query(
+        default=False,
+        description="When false (default), exclude events with payload_json.test_mode=true.",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> EventListResponse:
@@ -53,6 +57,7 @@ def get_events(
         event_type=event_type,
         status=status_filter,
         service_id=service_id,
+        include_test_events=include_test_events,
         limit=limit,
         offset=offset,
     )

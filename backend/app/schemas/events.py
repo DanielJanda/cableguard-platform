@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import BaseModel, Field, computed_field, field_serializer, field_validator
 
 from app.core.datetime_utils import ensure_utc, serialize_utc_datetime
 from app.core.media_urls import validate_media_url
@@ -62,9 +62,19 @@ class EventRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_test(self) -> bool:
+        """True when payload_json.test_mode is explicitly true (office / lab events)."""
+        return is_test_payload(self.payload_json)
+
     @field_serializer("created_at", "received_at")
     def serialize_datetimes(self, value: datetime) -> str:
         return serialize_utc_datetime(value) or ""
+
+
+def is_test_payload(payload: dict[str, Any] | None) -> bool:
+    return isinstance(payload, dict) and payload.get("test_mode") is True
 
 
 class EventListResponse(BaseModel):

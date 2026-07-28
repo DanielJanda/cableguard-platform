@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -92,30 +92,30 @@ def list_events(
     event_type: str | None = None,
     status: str | None = None,
     service_id: str | None = None,
+    include_test_events: bool = False,
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[Event], int]:
+    from app.schemas.events import is_test_payload
+
     q = select(Event)
-    count_q = select(func.count()).select_from(Event)
     if site_id:
         q = q.where(Event.site_id == site_id)
-        count_q = count_q.where(Event.site_id == site_id)
     if station_id:
         q = q.where(Event.station_id == station_id)
-        count_q = count_q.where(Event.station_id == station_id)
     if event_type:
         q = q.where(Event.event_type == event_type)
-        count_q = count_q.where(Event.event_type == event_type)
     if status:
         q = q.where(Event.status == status)
-        count_q = count_q.where(Event.status == status)
     if service_id:
         q = q.where(Event.service_id == service_id)
-        count_q = count_q.where(Event.service_id == service_id)
-    total = int(db.scalar(count_q) or 0)
-    rows = list(
-        db.scalars(q.order_by(Event.created_at.desc()).limit(limit).offset(offset)).all()
-    )
+
+    # Filter test events in-process so SQLite/Postgres JSON shapes stay portable.
+    ordered = list(db.scalars(q.order_by(Event.created_at.desc())).all())
+    if not include_test_events:
+        ordered = [r for r in ordered if not is_test_payload(r.payload_json)]
+    total = len(ordered)
+    rows = ordered[offset : offset + limit]
     return rows, total
 
 

@@ -21,6 +21,7 @@ def _load_bdaq():
 
     candidates = [
         os.environ.get("ADVANTECH_DAQNAVI_PATH"),
+        r"C:\Advantech\DAQNavi",
         r"C:\Program Files\Advantech\DAQNavi",
         r"C:\Program Files (x86)\Advantech\DAQNavi",
     ]

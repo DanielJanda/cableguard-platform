@@ -31,6 +31,7 @@ public sealed class ControlCenterConfig
     [JsonIgnore] public string NotificationsJsonPath => RuntimeConfigPaths.Notifications(this);
     [JsonIgnore] public string HardwareJsonPath => RuntimeConfigPaths.Hardware(this);
     [JsonIgnore] public string ScenariosJsonPath => RuntimeConfigPaths.Scenarios(this);
+    [JsonIgnore] public string TestStationsJsonPath => RuntimeConfigPaths.TestStations(this);
     [JsonIgnore] public string RoiDir => RuntimeConfigPaths.RoiDir(this);
     [JsonIgnore] public string ConfigJsonPath => Path.Combine(PlatformRoot, "runtime", "config", "controlcenter.json");
     [JsonIgnore] public string MediaMtxLocalYml => Path.Combine(PlatformRoot, "deploy", "mediamtx", "mediamtx.local.yml");

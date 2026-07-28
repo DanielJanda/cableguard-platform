@@ -10,6 +10,7 @@ public static class RuntimeConfigPaths
     public static string Notifications(ControlCenterConfig c) => Path.Combine(Root(c), "notifications.json");
     public static string Hardware(ControlCenterConfig c) => Path.Combine(Root(c), "hardware.json");
     public static string Scenarios(ControlCenterConfig c) => Path.Combine(Root(c), "scenarios.json");
+    public static string TestStations(ControlCenterConfig c) => Path.Combine(Root(c), "test-stations.json");
     public static string RoiDir(ControlCenterConfig c) => Path.Combine(Root(c), "roi");
     public static string RoiFile(ControlCenterConfig c, string id) => Path.Combine(RoiDir(c), $"{id}.json");
 }

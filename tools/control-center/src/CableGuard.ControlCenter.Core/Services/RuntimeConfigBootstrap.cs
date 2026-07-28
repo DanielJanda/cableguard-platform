@@ -18,6 +18,7 @@ public static class RuntimeConfigBootstrap
         CopyIfMissing(Path.Combine(examples, "streams.example.json"), RuntimeConfigPaths.Streams(config), logger);
         CopyIfMissing(Path.Combine(examples, "detectors.example.json"), RuntimeConfigPaths.Detectors(config), logger);
         CopyIfMissing(Path.Combine(examples, "scenarios.example.json"), RuntimeConfigPaths.Scenarios(config), logger);
+        CopyIfMissing(Path.Combine(examples, "test-stations.example.json"), RuntimeConfigPaths.TestStations(config), logger);
         CopyIfMissing(Path.Combine(examples, "notifications.example.json"), RuntimeConfigPaths.Notifications(config), logger);
 
         var roiExample = Path.Combine(examples, "roi", "office-fall-test.example.json");

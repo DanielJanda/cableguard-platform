@@ -259,6 +259,7 @@ public sealed class AdvantechUsb4761Adapter : IHardwareAdapter
         var candidates = new[]
         {
             Environment.GetEnvironmentVariable("ADVANTECH_DAQNAVI_PATH"),
+            @"C:\Advantech\DAQNavi",
             @"C:\Program Files\Advantech\DAQNavi",
             @"C:\Program Files (x86)\Advantech\DAQNavi",
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),

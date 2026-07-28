@@ -769,9 +769,21 @@ public sealed class ScenariosViewModel : ObservableObject
         {
             new ScenarioDocument
             {
+                Id = "office-e2e-fall-test",
+                DisplayName = "OFFICE END-TO-END FALL TEST",
+                Description = "Kancelář – test pádu: MediaMTX + Event Core + Monitor + fall-office-test (test_mode)",
+                StreamId = "office-test-camera",
+                DetectorIds = { "fall-office-test" },
+                RoiProfile = "office-fall-test",
+                DebugOverlay = true,
+                Telegram = false,
+                EventCore = true,
+            },
+            new ScenarioDocument
+            {
                 Id = "office-fall-test", DisplayName = "Office fall detection",
                 Description = "Office camera, fall detector, debug ON, Telegram OFF",
-                StreamId = "office-test", DetectorIds = { "fall-office-test" },
+                StreamId = "office-test-camera", DetectorIds = { "fall-office-test" },
                 RoiProfile = "office-fall-test", DebugOverlay = true,
             },
             new ScenarioDocument
@@ -806,8 +818,10 @@ public sealed class ScenariosViewModel : ObservableObject
     {
         if (Selected is null) return;
         RefreshDiff();
+        var isOfficeE2e = string.Equals(Selected.Id, "office-e2e-fall-test", StringComparison.OrdinalIgnoreCase);
+        var title = isOfficeE2e ? "SPUSTIT KANCELÁŘSKÝ TEST PÁDU" : "Scenario";
         if (MessageBox.Show($"RUN SCENARIO: {Selected.DisplayName}?\n\n{DiffText}",
-                "Scenario", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
+                title, MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
             return;
         _logger.Info($"[SCENARIO] RUN {Selected.Id}");
         if (Selected.HardwareTest) _hardware.TestMode = true;
@@ -816,6 +830,46 @@ public sealed class ScenariosViewModel : ObservableObject
         // Snapshot before any Start/Stop that may reload Items.
         var snapshot = _detectors.Items.Select(r => r.Instance).ToList();
         var wanted = new HashSet<string>(Selected.DetectorIds, StringComparer.OrdinalIgnoreCase);
+
+        if (isOfficeE2e)
+        {
+            // Office E2E: start only fall-office-test; do not stop production detectors / shared services.
+            foreach (var instance in snapshot.Where(i => wanted.Contains(i.Id)))
+            {
+                if (Selected.EventCore)
+                    instance.PublishEventCore = true;
+                instance.PublishTelegram = false;
+                instance.DebugOverlay = Selected.DebugOverlay || instance.DebugOverlay;
+                instance.InputStream = string.IsNullOrWhiteSpace(Selected.StreamId)
+                    ? instance.InputStream
+                    : Selected.StreamId;
+                await _detectors.StartAsync(instance, instance.DebugOverlay, reload: false);
+            }
+            await _detectors.ReloadAsync();
+
+            var station = TestStationService.Find(
+                TestStationService.Load(_config.TestStationsJsonPath), "office-test")
+                ?? TestStationService.OfficeDefault().Stations[0];
+            var url = $"http://{_config.LanHost}:8080{station.MonitorPath}";
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[SCENARIO] open monitor failed: {ex.Message}");
+            }
+
+            MessageBox.Show(
+                "Kancelářský E2E test spuštěn (best-effort).\n\n" +
+                $"1) MediaMTX path: {station.VideoStream}\n" +
+                $"2) Detector: {station.FallServiceId}\n" +
+                $"3) Monitor: {url}\n\n" +
+                "Zastavení scénáře ukončí pouze fall-office-test — neprodukční MediaMTX/Event Core/Monitor.",
+                "OFFICE E2E", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         foreach (var instance in snapshot)
         {
             var want = wanted.Contains(instance.Id);
