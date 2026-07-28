@@ -285,10 +285,11 @@ public sealed class CamerasViewModel : ObservableObject
 
     public void OpenInMonitor(CameraEntry camera)
     {
+        // STREAM PREVIEW — never open E2E dashboard from camera row.
         var path = string.IsNullOrWhiteSpace(camera.MediaMtxPath) ? camera.CameraId : camera.MediaMtxPath;
         var url = $"http://{_config.LanHost}:8080/test-lab/stream/{Uri.EscapeDataString(path)}";
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        _logger.Info($"[CAMERAS] Open in Monitor: {url}");
+        _logger.Info($"[CAMERAS] STREAM PREVIEW: {url}");
     }
 
     public async Task<string> TestConnectionAsync(CameraEntry camera)

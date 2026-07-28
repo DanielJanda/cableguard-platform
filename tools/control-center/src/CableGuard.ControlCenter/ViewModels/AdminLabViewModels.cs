@@ -139,10 +139,11 @@ public sealed class StreamsViewModel : ObservableObject
 
     public void OpenInMonitor(LogicalStream s)
     {
+        // STREAM PREVIEW — video only. Not the E2E fall dashboard.
         var streamId = string.IsNullOrWhiteSpace(s.StreamId) ? s.MediaMtxPath : s.StreamId;
         var url = $"http://{_config.LanHost}:8080/test-lab/stream/{Uri.EscapeDataString(streamId)}";
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        _logger.Info($"[STREAMS] Open in Monitor: {url}");
+        _logger.Info($"[STREAMS] STREAM PREVIEW: {url}");
     }
 
     public async Task RefreshReadyAsync(LogicalStream s, Action<string> setStatus)

@@ -745,12 +745,40 @@ public sealed class ScenariosViewModel : ObservableObject
         _config = config; _logger = logger; _detectors = detectors; _notifications = notifications; _hardware = hardware;
         Reload();
         RunCommand = new AsyncRelayCommand(RunSelected);
+        OpenE2eDashboardCommand = new RelayCommand(OpenE2eDashboard);
+        OpenStreamPreviewCommand = new RelayCommand(OpenStreamPreview);
     }
 
     public ObservableCollection<ScenarioDocument> Items { get; } = new();
     public ScenarioDocument? Selected { get; set; }
     public string DiffText { get => _diffText; private set => SetField(ref _diffText, value); }
     public AsyncRelayCommand RunCommand { get; }
+    public RelayCommand OpenE2eDashboardCommand { get; }
+    public RelayCommand OpenStreamPreviewCommand { get; }
+
+    /// <summary>END-TO-END FALL DASHBOARD — kiosk overlay + WS + ack.</summary>
+    public void OpenE2eDashboard()
+    {
+        var station = TestStationService.Find(
+                          TestStationService.Load(_config.TestStationsJsonPath), "office-test")
+                      ?? TestStationService.OfficeDefault().Stations[0];
+        var path = string.IsNullOrWhiteSpace(station.MonitorPath) ? "/test-lab/office-fall" : station.MonitorPath;
+        var url = $"http://{_config.LanHost}:8080{path}";
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        _logger.Info($"[SCENARIO] END-TO-END FALL DASHBOARD: {url}");
+    }
+
+    /// <summary>STREAM PREVIEW — video only for office-test-camera.</summary>
+    public void OpenStreamPreview()
+    {
+        var station = TestStationService.Find(
+                          TestStationService.Load(_config.TestStationsJsonPath), "office-test")
+                      ?? TestStationService.OfficeDefault().Stations[0];
+        var stream = string.IsNullOrWhiteSpace(station.VideoStream) ? "office-test-camera" : station.VideoStream;
+        var url = $"http://{_config.LanHost}:8080/test-lab/stream/{Uri.EscapeDataString(stream)}";
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        _logger.Info($"[SCENARIO] STREAM PREVIEW: {url}");
+    }
 
     public void Reload()
     {
@@ -850,21 +878,23 @@ public sealed class ScenariosViewModel : ObservableObject
             var station = TestStationService.Find(
                 TestStationService.Load(_config.TestStationsJsonPath), "office-test")
                 ?? TestStationService.OfficeDefault().Stations[0];
-            var url = $"http://{_config.LanHost}:8080{station.MonitorPath}";
+            // Always open END-TO-END FALL DASHBOARD (not stream preview).
+            var url = $"http://{_config.LanHost}:8080/test-lab/office-fall";
             try
             {
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[SCENARIO] open monitor failed: {ex.Message}");
+                _logger.Warn($"[SCENARIO] open E2E dashboard failed: {ex.Message}");
             }
 
             MessageBox.Show(
                 "Kancelářský E2E test spuštěn (best-effort).\n\n" +
                 $"1) MediaMTX path: {station.VideoStream}\n" +
                 $"2) Detector: {station.FallServiceId}\n" +
-                $"3) Monitor: {url}\n\n" +
+                $"3) END-TO-END FALL DASHBOARD: {url}\n" +
+                $"4) STREAM PREVIEW (odděleně): http://{_config.LanHost}:8080/test-lab/stream/{station.VideoStream}\n\n" +
                 "Zastavení scénáře ukončí pouze fall-office-test — neprodukční MediaMTX/Event Core/Monitor.",
                 "OFFICE E2E", MessageBoxButton.OK, MessageBoxImage.Information);
             return;

@@ -286,8 +286,16 @@
             <StackPanel DockPanel.Dock="Top">
               <TextBlock Text="{Binding Selected.DisplayName}" FontSize="18" FontWeight="SemiBold"/>
               <TextBlock Text="{Binding Selected.Description}" Foreground="{StaticResource FgMuted}" Margin="0,4,0,8" TextWrapping="Wrap"/>
-              <Button Content="SPUSTIT SCÉNÁŘ" HorizontalAlignment="Left" Padding="16,8" Background="#FF2E7D32"
-                      Command="{Binding RunCommand}" Margin="0,0,0,12"/>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="SPUSTIT KANCELÁŘSKÝ TEST PÁDU" HorizontalAlignment="Left" Padding="16,8" Background="#FF2E7D32"
+                        Command="{Binding RunCommand}" Margin="0,0,8,0"/>
+                <Button Content="END-TO-END FALL DASHBOARD" HorizontalAlignment="Left" Padding="16,8" Background="#FF5D4037"
+                        Command="{Binding OpenE2eDashboardCommand}" ToolTip="http://10.6.1.40:8080/test-lab/office-fall"/>
+                <Button Content="STREAM PREVIEW" HorizontalAlignment="Left" Padding="16,8" Background="#FF3A5A8C"
+                        Command="{Binding OpenStreamPreviewCommand}" ToolTip="http://10.6.1.40:8080/test-lab/stream/office-test-camera"/>
+              </StackPanel>
+              <TextBlock TextWrapping="Wrap" Foreground="#FFFFCC80" Margin="0,0,0,8"
+                         Text="STREAM PREVIEW = jen video (/test-lab/stream/…). END-TO-END FALL DASHBOARD = kiosk overlay + WS + ack (/test-lab/office-fall)."/>
               <TextBlock Text="Rozdíl oproti aktuálnímu nastavení:" FontWeight="SemiBold"/>
             </StackPanel>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4">
@@ -360,8 +368,9 @@
                       <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                      <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
-                      <Button Content="Otevřít v monitoru" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"/>
+                      <Button Content="MediaMTX náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="STREAM PREVIEW" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"
+                              ToolTip="Otevře /test-lab/stream/{streamId} — jen video, ne E2E dashboard"/>
                       <Button Content="Použít" Command="{Binding ApplyCommand}"/>
                     </StackPanel>
                   </Grid>
