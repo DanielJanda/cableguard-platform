@@ -32,7 +32,10 @@ public static class ConfigFingerprint
         int? width,
         int? height,
         double? fps,
-        string? codec)
+        string? codec,
+        int? channelId = null,
+        string? streamType = null,
+        string? profileId = null)
         => new
         {
             camera_id = cameraId ?? "",
@@ -42,6 +45,9 @@ public static class ConfigFingerprint
             height,
             fps,
             codec = codec ?? "",
+            channel_id = channelId,
+            stream_type = streamType ?? "",
+            profile_id = profileId ?? "",
             method_scope = "glass_to_glass_manual",
         };
 

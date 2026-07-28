@@ -1,11 +1,14 @@
 {
-  "version": 1,
+  "version": 2,
   "streams": [
     {
       "stream_id": "zahradky-horni-stanice",
       "display_name": "Zahrádky horní stanice (production)",
       "mediamtx_path": "zahradky-horni-stanice",
       "camera_id": "zahradky-upper-92",
+      "profile_id": "zahradky-upper-92-ch102",
+      "stream_type": "sub",
+      "channel_id": 102,
       "enabled": true,
       "is_production": true
     },
@@ -14,15 +17,32 @@
       "display_name": "Zahrádky compare 90",
       "mediamtx_path": "zahradky-horni-stanice-90",
       "camera_id": "zahradky-upper-90",
+      "profile_id": "zahradky-upper-90-ch102",
+      "stream_type": "sub",
+      "channel_id": 102,
       "enabled": true,
       "is_production": false
     },
     {
-      "stream_id": "office-test",
-      "display_name": "Office test",
-      "mediamtx_path": "office-test",
-      "camera_id": "office-test-1",
-      "enabled": false,
+      "stream_id": "office-test-camera",
+      "display_name": "Office test (SUB 102)",
+      "mediamtx_path": "office-test-camera",
+      "camera_id": "camera-122727",
+      "profile_id": "camera-122727-ch102",
+      "stream_type": "sub",
+      "channel_id": 102,
+      "enabled": true,
+      "is_production": false
+    },
+    {
+      "stream_id": "office-test-camera-main",
+      "display_name": "Office test (MAIN 101)",
+      "mediamtx_path": "office-test-camera-main",
+      "camera_id": "camera-122727",
+      "profile_id": "camera-122727-ch101",
+      "stream_type": "main",
+      "channel_id": 101,
+      "enabled": true,
       "is_production": false
     }
   ]

@@ -27,6 +27,27 @@ public static class RoiProfileService
         return errors;
     }
 
+    /// <summary>
+    /// Returns RESOLUTION/STREAM MISMATCH when ROI fingerprint or capture resolution no longer matches stream.
+    /// Legacy ROI without fingerprint is treated as unknown (not auto-invalid).
+    /// </summary>
+    public static string? MismatchStatus(RoiProfile roi, string? currentFingerprint, int? currentWidth, int? currentHeight)
+    {
+        if (!string.IsNullOrWhiteSpace(roi.StreamProfileFingerprint))
+        {
+            if (string.IsNullOrWhiteSpace(currentFingerprint) ||
+                !string.Equals(roi.StreamProfileFingerprint, currentFingerprint, StringComparison.OrdinalIgnoreCase))
+                return "RESOLUTION/STREAM MISMATCH";
+        }
+
+        if (roi.SourceWidth > 0 && roi.SourceHeight > 0 &&
+            currentWidth is int w && currentHeight is int h &&
+            (roi.SourceWidth != w || roi.SourceHeight != h))
+            return "RESOLUTION/STREAM MISMATCH";
+
+        return null;
+    }
+
     public static RoiProfile Load(string filePath)
     {
         var profile = JsonSerializer.Deserialize<RoiProfile>(File.ReadAllText(filePath))

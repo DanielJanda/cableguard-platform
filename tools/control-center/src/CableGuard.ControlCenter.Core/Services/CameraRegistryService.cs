@@ -101,7 +101,12 @@ public sealed partial class CameraRegistryService
         var errors = Validate(json);
         if (errors.Count > 0)
             throw new InvalidOperationException("cameras.json invalid: " + string.Join("; ", errors));
-        return JsonSerializer.Deserialize<CameraRegistryDocument>(json)!;
+        var registry = JsonSerializer.Deserialize<CameraRegistryDocument>(json)!;
+        foreach (var cam in registry.Cameras)
+            CameraProfileAuditService.EnsureMigrated(cam);
+        if (registry.Version < 2)
+            registry.Version = 2;
+        return registry;
     }
 
     public static void Save(CameraRegistryDocument registry, string filePath)

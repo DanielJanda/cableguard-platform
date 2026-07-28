@@ -56,6 +56,10 @@ public sealed class RoiProfile
     /// <summary>Always "saved" for Admin Studio profiles — never claim ACTIVE until detector loads/restarts.</summary>
     [JsonPropertyName("activation_state")] public string ActivationState { get; set; } = "saved";
     [JsonPropertyName("is_production")] public bool IsProduction { get; set; }
+    /// <summary>Fingerprint of stream profile when ROI was drawn. Mismatch → RESOLUTION/STREAM MISMATCH.</summary>
+    [JsonPropertyName("stream_profile_fingerprint")] public string StreamProfileFingerprint { get; set; } = "";
+    [JsonPropertyName("channel_id")] public int? ChannelId { get; set; }
+    [JsonPropertyName("stream_type")] public string StreamType { get; set; } = "";
 }
 
 public sealed class RoiPoint

@@ -303,33 +303,67 @@
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Text="{Binding RegistryStatus}" Foreground="{StaticResource FgMuted}" VerticalAlignment="Center"/>
             <Button Content="+ Přidat kameru" Command="{Binding AddCommand}" Margin="12,0,0,0" Background="#FF3A5A8C"/>
+            <Button Content="Audit profilů" Command="{Binding AuditAllCommand}" Background="#FF5D4037"/>
             <Button Content="Načíst znovu" Command="{Binding ReloadCommand}"/>
           </StackPanel>
           <ItemsControl Grid.Row="1" ItemsSource="{Binding Cameras}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Border Background="#FF23272F" CornerRadius="6" Padding="12" Margin="0,4">
-                  <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <StackPanel>
-                      <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Status}" Margin="14,0,0,0" Style="{StaticResource StatusBadge}"/>
+                  <StackPanel>
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                      <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                          <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
+                          <TextBlock Text="{Binding Status}" Margin="14,0,0,0" Style="{StaticResource StatusBadge}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0" TextWrapping="Wrap"/>
                       </StackPanel>
-                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                      <Button Content="Upravit" Command="{Binding EditCommand}"/>
-                      <Button Content="Test" Command="{Binding TestCommand}"/>
-                      <Button Content="Apply MTX" Command="{Binding ApplyCommand}" Background="#FF2E7D32"/>
-                      <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
-                      <Button Content="Otevřít v monitoru" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"/>
-                      <Button Content="Primární" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
-                      <Button Content="Přihlášení" Command="{Binding EditCredentialsCommand}"/>
-                      <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
-                      <Button Content="Smazat" Command="{Binding DeleteCommand}" Background="#FF8E2A2A"/>
-                    </StackPanel>
-                  </Grid>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="Audit" Command="{Binding AuditCommand}" Background="#FF5D4037"/>
+                        <Button Content="Upravit" Command="{Binding EditCommand}"/>
+                        <Button Content="Test" Command="{Binding TestCommand}"/>
+                        <Button Content="Apply MTX" Command="{Binding ApplyCommand}" Background="#FF2E7D32"/>
+                        <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
+                        <Button Content="Otevřít v monitoru" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"/>
+                        <Button Content="Primární" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
+                        <Button Content="Přihlášení" Command="{Binding EditCredentialsCommand}"/>
+                        <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
+                        <Button Content="Smazat" Command="{Binding DeleteCommand}" Background="#FF8E2A2A"/>
+                      </StackPanel>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Profiles}" Margin="0,8,0,0">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Background="#FF1A1D22" CornerRadius="4" Padding="8" Margin="0,3,0,0">
+                            <Grid>
+                              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                              <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                  <TextBlock Text="{Binding AuditBadge}" Margin="10,0,0,0" Style="{StaticResource StatusBadge}"/>
+                                  <TextBlock Text="{Binding SelectedLabel}" Margin="8,0,0,0" Foreground="#FF81C784"/>
+                                </StackPanel>
+                                <TextBlock FontSize="11" Foreground="{StaticResource FgMuted}" Margin="0,2,0,0"
+                                           Text="{Binding ConfiguredSummary, StringFormat=configured: {0}}"/>
+                                <TextBlock FontSize="11" Foreground="{StaticResource FgMuted}"
+                                           Text="{Binding ObservedSummary, StringFormat=observed: {0}}"/>
+                                <TextBlock FontSize="11" Foreground="#FFFFCC80" Text="{Binding Detail}" TextWrapping="Wrap"/>
+                              </StackPanel>
+                              <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="Preview" Command="{Binding PreviewCommand}"/>
+                                <Button Content="Audit" Command="{Binding AuditCommand}"/>
+                                <Button Content="Select" Command="{Binding SelectCommand}" Background="#FF3A5A8C"/>
+                                <Button Content="Configure" Command="{Binding ConfigureCommand}" Background="#FF6A1B9A"/>
+                                <Button Content="Create stream" Command="{Binding CreateStreamCommand}" Background="#FF2E7D32"/>
+                              </StackPanel>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

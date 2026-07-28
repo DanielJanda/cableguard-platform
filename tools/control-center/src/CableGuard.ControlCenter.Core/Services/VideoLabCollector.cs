@@ -142,7 +142,10 @@ public sealed class VideoLabCollector
                 m.ResolutionWidth.Kind == MeasurementKind.Measured ? (int?)m.ResolutionWidth.Value : null,
                 m.ResolutionHeight.Kind == MeasurementKind.Measured ? (int?)m.ResolutionHeight.Value : null,
                 m.ReceivedFps.Kind == MeasurementKind.Measured ? m.ReceivedFps.Value : null,
-                m.Codec.Note));
+                m.Codec.Note,
+                stream.ChannelId,
+                stream.StreamType,
+                stream.ProfileId));
             MarkOutdatedIfFingerprintChanged(_g2g, stream.StreamId, fp);
             sample = _g2g.LastOrDefault(s => s.StreamId == stream.StreamId && s.IsAuthoritative);
         }

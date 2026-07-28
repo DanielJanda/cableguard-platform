@@ -281,7 +281,10 @@ public sealed class VideoLabViewModel : ObservableObject
             m?.ResolutionWidth.Kind == MeasurementKind.Measured ? (int?)m.ResolutionWidth.Value : null,
             m?.ResolutionHeight.Kind == MeasurementKind.Measured ? (int?)m.ResolutionHeight.Value : null,
             m?.ReceivedFps.Kind == MeasurementKind.Measured ? m.ReceivedFps.Value : null,
-            m?.Codec.Note));
+            m?.Codec.Note,
+            stream.ChannelId,
+            stream.StreamType,
+            stream.ProfileId));
         _collector.RecordManualLatency(SelectedStreamId, camId, ms, fp, "manual visual comparison");
         _logger.Info($"[VIDEO LAB] Manual G2G sample {ms} ms for {SelectedStreamId} fp={fp[..Math.Min(12, fp.Length)]}…");
         _ = RefreshAsync();
