@@ -1,10 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>CableGuard.Usb4761Probe</RootNamespace>
     <AssemblyName>usb4761-probe</AssemblyName>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\control-center\src\CableGuard.ControlCenter.Core\CableGuard.ControlCenter.Core.csproj" />
+  </ItemGroup>
 </Project>
