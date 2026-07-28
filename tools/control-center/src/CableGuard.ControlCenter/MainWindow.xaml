@@ -319,9 +319,14 @@
                       <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
+                      <Button Content="Upravit" Command="{Binding EditCommand}"/>
+                      <Button Content="Test" Command="{Binding TestCommand}"/>
+                      <Button Content="Apply MTX" Command="{Binding ApplyCommand}" Background="#FF2E7D32"/>
                       <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
                       <Button Content="Primární" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
                       <Button Content="Přihlášení" Command="{Binding EditCredentialsCommand}"/>
+                      <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
+                      <Button Content="Smazat" Command="{Binding DeleteCommand}" Background="#FF8E2A2A"/>
                     </StackPanel>
                   </Grid>
                 </Border>
@@ -502,21 +507,26 @@
             <TextBlock Text="{Binding Banner}" FontWeight="Bold" TextWrapping="Wrap"/>
           </Border>
           <CheckBox Content="Zapnout HARDWARE TEST MODE" IsChecked="{Binding TestMode}" Foreground="#FFFFCC80"/>
-          <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,12"/>
-          <TextBlock Text="Impulz relé" FontWeight="SemiBold"/>
+          <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+            <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
+            <Button Content="Vše vyp (ALL OFF)" Command="{Binding AllOffCommand}" Margin="8,0,0,0"/>
+          </StackPanel>
+          <TextBlock Text="{Binding DeviceLine}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,6"/>
+          <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,6"/>
+          <TextBlock Text="{Binding LastOp, StringFormat=Last operation: {0}}" Foreground="#FFFFCC80" Margin="0,0,0,12"/>
+          <TextBlock Text="Impulz relé (max 500 ms, vyžaduje TEST MODE)" FontWeight="SemiBold"/>
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
             <Button Content="Relé 1" Command="{Binding Pulse1Command}"/>
             <Button Content="Relé 2" Command="{Binding Pulse2Command}"/>
             <Button Content="Relé 3" Command="{Binding Pulse3Command}"/>
           </StackPanel>
-          <TextBlock Text="Semafor" FontWeight="SemiBold"/>
+          <TextBlock Text="Semafor (disabled dokud není mapping v hardware.json)" FontWeight="SemiBold"/>
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
             <Button Content="ZELENÁ" Command="{Binding GreenCommand}" Background="#FF2E7D32"/>
             <Button Content="ČERVENÁ" Command="{Binding RedCommand}" Background="#FF8E2A2A"/>
-            <Button Content="Bzučák 2 s" Command="{Binding BuzzerCommand}"/>
-            <Button Content="Vše vyp" Command="{Binding AllOffCommand}"/>
+            <Button Content="Bzučák ≤500 ms" Command="{Binding BuzzerCommand}"/>
           </StackPanel>
-          <TextBlock Text="Žádná automatická vazba detektor pádu → relé v tomto úkolu."
+          <TextBlock Text="Žádná automatická vazba detektor pádu → relé. Pouze ruční diagnostika."
                      Foreground="#FFFFCC80" FontSize="12"/>
         </StackPanel>
       </TabItem>

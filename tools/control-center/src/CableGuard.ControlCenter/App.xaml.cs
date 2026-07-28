@@ -39,7 +39,8 @@ public partial class App : Application
         var mediaMtxApi = new MediaMtxApiClient(http, config.MediaMtxApiBase);
         var persister = new MediaMtxLocalConfigPersister(config.MediaMtxLocalYml);
         var credentials = new WindowsCredentialStore();
-        var hardware = new NotAvailableHardwareAdapter();
+        var cameraApply = new CameraRuntimeApplyService(config, mediaMtxApi, persister, credentials, prober, logger);
+        var hardware = AdvantechUsb4761Adapter.Create(config, logger);
 
         var switchService = new StreamSwitchService(mediaMtxApi, persister, prober, config.WhepBaseLocal);
         var detectorManager = new DetectorProcessManager(config, logger, processes);
@@ -49,7 +50,7 @@ public partial class App : Application
         var components = factory.CreateAllInStartOrder();
 
         var mode = new AdminModeViewModel();
-        var camerasVm = new CamerasViewModel(config, logger, mediaMtxApi, credentials, switchService);
+        var camerasVm = new CamerasViewModel(config, logger, mediaMtxApi, credentials, switchService, cameraApply);
         var streamsVm = new StreamsViewModel(config, logger, mediaMtxApi, switchService, () => camerasVm.Registry);
         var notificationsVm = new NotificationsViewModel(config, logger, credentials);
         var detectorsVm = new DetectorsViewModel(config, logger, detectorManager,
