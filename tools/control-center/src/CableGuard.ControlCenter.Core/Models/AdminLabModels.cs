@@ -85,6 +85,12 @@ public sealed class HardwareDocument
     [JsonPropertyName("relay_server_host")] public string RelayServerHost { get; set; } = "127.0.0.1";
     [JsonPropertyName("relay_server_port")] public int RelayServerPort { get; set; } = 9877;
     [JsonPropertyName("auto_off_seconds")] public int AutoOffSeconds { get; set; } = 2;
+    /// <summary>When empty, Green/Red/Buzzer buttons stay disabled. Channels are 1-based.</summary>
+    [JsonPropertyName("green_channel")] public int? GreenChannel { get; set; }
+    [JsonPropertyName("red_channel")] public int? RedChannel { get; set; }
+    [JsonPropertyName("buzzer_channel")] public int? BuzzerChannel { get; set; }
+    [JsonPropertyName("relay_count")] public int RelayCount { get; set; } = 8;
+    [JsonPropertyName("di_count")] public int DiCount { get; set; } = 8;
 }
 
 public sealed class ScenarioDocument

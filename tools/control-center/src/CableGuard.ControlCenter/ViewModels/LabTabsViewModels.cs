@@ -553,18 +553,22 @@ public sealed class HardwareViewModel : ObservableObject
     private readonly IHardwareAdapter _adapter;
     private bool _testMode;
     private string _status = "";
+    private string _deviceLine = "";
+    private string _lastOp = "—";
 
     public HardwareViewModel(ControlCenterLogger logger, IHardwareAdapter adapter)
     {
         _logger = logger; _adapter = adapter;
         _status = adapter.StatusDetail;
-        Pulse1Command = new AsyncRelayCommand(() => Pulse(1));
-        Pulse2Command = new AsyncRelayCommand(() => Pulse(2));
-        Pulse3Command = new AsyncRelayCommand(() => Pulse(3));
-        GreenCommand = new AsyncRelayCommand(() => Semaphore("green"));
-        RedCommand = new AsyncRelayCommand(() => Semaphore("red"));
-        BuzzerCommand = new AsyncRelayCommand(() => Semaphore("buzzer"));
-        AllOffCommand = new AsyncRelayCommand(AllOff);
+        RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        Pulse1Command = new AsyncRelayCommand(() => Pulse(1), () => CanWrite);
+        Pulse2Command = new AsyncRelayCommand(() => Pulse(2), () => CanWrite);
+        Pulse3Command = new AsyncRelayCommand(() => Pulse(3), () => CanWrite);
+        GreenCommand = new AsyncRelayCommand(() => Semaphore("green"), () => CanSemantic);
+        RedCommand = new AsyncRelayCommand(() => Semaphore("red"), () => CanSemantic);
+        BuzzerCommand = new AsyncRelayCommand(() => Semaphore("buzzer"), () => CanSemantic);
+        AllOffCommand = new AsyncRelayCommand(AllOff, () => CanWrite);
+        _ = RefreshAsync();
     }
 
     public bool TestMode
@@ -576,11 +580,31 @@ public sealed class HardwareViewModel : ObservableObject
             {
                 _adapter.IsTestMode = value;
                 _logger.Info($"[HW] TEST MODE {(value ? "ENABLED" : "disabled")}");
+                if (value)
+                {
+                    try
+                    {
+                        // Entering TEST MODE: verify connection and force ALL OFF when available.
+                        _ = EnterTestModeAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Status = ex.Message;
+                    }
+                }
+                RaiseCanExecutes();
             }
         }
     }
+
     public string Status { get => _status; private set => SetField(ref _status, value); }
-    public string Banner => "⚠ HARDWARE TEST MODE — manuální zásahy jen s potvrzením, auto-off, žádná vazba detector→relay";
+    public string DeviceLine { get => _deviceLine; private set => SetField(ref _deviceLine, value); }
+    public string LastOp { get => _lastOp; private set => SetField(ref _lastOp, value); }
+    public string Banner => "⚠ HARDWARE TEST MODE — manuální zásahy jen s potvrzením, auto-off ≤500 ms, žádná vazba detector→relay";
+    public bool CanWrite => TestMode && _adapter.IsAvailable;
+    public bool CanSemantic => CanWrite && (_adapter as AdvantechUsb4761Adapter)?.MappingConfigured == true;
+
+    public AsyncRelayCommand RefreshCommand { get; }
     public AsyncRelayCommand Pulse1Command { get; }
     public AsyncRelayCommand Pulse2Command { get; }
     public AsyncRelayCommand Pulse3Command { get; }
@@ -589,14 +613,67 @@ public sealed class HardwareViewModel : ObservableObject
     public AsyncRelayCommand BuzzerCommand { get; }
     public AsyncRelayCommand AllOffCommand { get; }
 
+    private async Task EnterTestModeAsync()
+    {
+        await _adapter.EnsureConnectedAsync();
+        if (_adapter.IsAvailable)
+        {
+            await _adapter.AllOffAsync();
+            LastOp = "TEST MODE → ALL OFF";
+        }
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        await _adapter.EnsureConnectedAsync();
+        Status = _adapter.StatusDetail;
+        if (_adapter is AdvantechUsb4761Adapter adv)
+        {
+            var d = adv.Discovery;
+            DeviceLine = $"Device: {d.Status} | Model: {d.Model} | Serial: {d.SerialMasked} | " +
+                         $"Driver: {d.DriverStatus} | Relays: {d.RelayCount} | DI: {d.DiCount}";
+            LastOp = adv.LastOperation;
+            if (!string.IsNullOrWhiteSpace(adv.LastError))
+                Status = adv.StatusDetail;
+        }
+        else
+        {
+            DeviceLine = _adapter.IsAvailable ? "Device: CONNECTED" : "Device: NOT AVAILABLE";
+        }
+
+        try
+        {
+            var di = await _adapter.ReadDigitalInputsAsync();
+            if (di.Count > 0)
+                DeviceLine += " | DI: " + string.Join(" ", di.Select(kv => $"{kv.Key}={(kv.Value ? 1 : 0)}"));
+        }
+        catch { /* discovery-only ok */ }
+
+        RaiseCanExecutes();
+    }
+
+    private void RaiseCanExecutes()
+    {
+        Pulse1Command.RaiseCanExecuteChanged();
+        Pulse2Command.RaiseCanExecuteChanged();
+        Pulse3Command.RaiseCanExecuteChanged();
+        GreenCommand.RaiseCanExecuteChanged();
+        RedCommand.RaiseCanExecuteChanged();
+        BuzzerCommand.RaiseCanExecuteChanged();
+        AllOffCommand.RaiseCanExecuteChanged();
+    }
+
     private async Task Pulse(int ch)
     {
-        if (!Confirm($"Pulse relay {ch} (max 2 s)?")) return;
+        if (!Confirm($"Pulse relay {ch} (max 500 ms)?")) return;
         try
         {
             HardwareSafety.EnsureTestMode(_adapter);
-            await _adapter.PulseRelayAsync(ch, HardwareSafety.ClampPulse(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2)));
+            await _adapter.PulseRelayAsync(ch, HardwareSafety.ClampPulse(TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500)));
+            LastOp = $"pulse {ch}";
             _logger.Info($"[HW] Pulse relay {ch} OK");
+            await RefreshAsync();
         }
         catch (Exception ex)
         {
@@ -607,12 +684,20 @@ public sealed class HardwareViewModel : ObservableObject
 
     private async Task Semaphore(string color)
     {
-        if (!Confirm($"Set semaphore {color}?")) return;
+        if (!CanSemantic)
+        {
+            MessageBox.Show("Semantic mapping NOT CONFIGURED — nastav green/red/buzzer_channel v hardware.json.",
+                "Hardware", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (!Confirm($"Pulse semaphore {color} (≤500 ms)?")) return;
         try
         {
             HardwareSafety.EnsureTestMode(_adapter);
             await _adapter.SetSemaphoreAsync(color, true);
-            _logger.Info($"[HW] Semaphore {color} ON");
+            LastOp = $"semaphore {color}";
+            _logger.Info($"[HW] Semaphore {color} pulse");
+            await RefreshAsync();
         }
         catch (Exception ex)
         {
@@ -627,7 +712,9 @@ public sealed class HardwareViewModel : ObservableObject
         {
             HardwareSafety.EnsureTestMode(_adapter);
             await _adapter.AllOffAsync();
+            LastOp = "ALL OFF";
             _logger.Info("[HW] ALL OFF");
+            await RefreshAsync();
         }
         catch (Exception ex)
         {
