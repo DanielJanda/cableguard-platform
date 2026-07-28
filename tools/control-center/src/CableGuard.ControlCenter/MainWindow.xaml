@@ -323,6 +323,7 @@
                       <Button Content="Test" Command="{Binding TestCommand}"/>
                       <Button Content="Apply MTX" Command="{Binding ApplyCommand}" Background="#FF2E7D32"/>
                       <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="Otevřít v monitoru" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"/>
                       <Button Content="Primární" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
                       <Button Content="Přihlášení" Command="{Binding EditCredentialsCommand}"/>
                       <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
@@ -360,6 +361,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                       <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="Otevřít v monitoru" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"/>
                       <Button Content="Použít" Command="{Binding ApplyCommand}"/>
                     </StackPanel>
                   </Grid>

@@ -137,10 +137,18 @@ public sealed class StreamsViewModel : ObservableObject
     public void Preview(LogicalStream s) =>
         Process.Start(new ProcessStartInfo(_config.PreviewUrl(s.MediaMtxPath)) { UseShellExecute = true });
 
+    public void OpenInMonitor(LogicalStream s)
+    {
+        var streamId = string.IsNullOrWhiteSpace(s.StreamId) ? s.MediaMtxPath : s.StreamId;
+        var url = $"http://{_config.LanHost}:8080/test-lab/stream/{Uri.EscapeDataString(streamId)}";
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        _logger.Info($"[STREAMS] Open in Monitor: {url}");
+    }
+
     public async Task RefreshReadyAsync(LogicalStream s, Action<string> setStatus)
     {
         var ready = await _api.IsPathReadyAsync(s.MediaMtxPath);
-        setStatus(ready switch { true => "ŽIVĚ", false => "OFFLINE", null => "API?" });
+        setStatus(ready switch { true => "READY", false => "OFFLINE", null => "API?" });
     }
 }
 
@@ -153,13 +161,25 @@ public sealed class StreamRowViewModel : ObservableObject
         Stream = stream; _parent = parent;
         PreviewCommand = new RelayCommand(() => _parent.Preview(Stream));
         ApplyCommand = new AsyncRelayCommand(() => _parent.ApplyMappingAsync(Stream, Stream.CameraId));
+        OpenInMonitorCommand = new RelayCommand(
+            () => _parent.OpenInMonitor(Stream),
+            () => string.Equals(Live, "READY", StringComparison.OrdinalIgnoreCase));
     }
     public LogicalStream Stream { get; }
     public string Title => Stream.IsProduction ? $"{Stream.DisplayName} ★ PRODUKCE" : Stream.DisplayName;
     public string Subtitle => $"cesta: {Stream.MediaMtxPath}  →  kamera: {Stream.CameraId}";
-    public string Live { get => _live; private set => SetField(ref _live, value); }
+    public string Live
+    {
+        get => _live;
+        private set
+        {
+            if (SetField(ref _live, value))
+                OpenInMonitorCommand.RaiseCanExecuteChanged();
+        }
+    }
     public RelayCommand PreviewCommand { get; }
     public AsyncRelayCommand ApplyCommand { get; }
+    public RelayCommand OpenInMonitorCommand { get; }
     public Task RefreshAsync() => _parent.RefreshReadyAsync(Stream, s => Live = s);
 }
 
@@ -226,17 +246,19 @@ public sealed class DetectorsViewModel : ObservableObject
             new DetectorInstance
             {
                 Id = "fall-office-test", DisplayName = "Fall Detector – Office test",
-                DetectorType = "fall", InputStream = "office-test",
+                DetectorType = "fall", InputStream = "office-test-camera",
                 Model = "yolo11m-pose.pt", RoiProfile = "office-fall-test",
                 ScriptRelative = "apps/zahradky_horni_pad.py", ProcessHint = "zahradky_horni_pad",
                 DebugOverlay = true, Enabled = false,
+                PublishTelegram = false, PublishEventCore = false,
             },
         }
     };
 
     public void Persist()
     {
-        var streamIds = _streams().Streams.Select(s => s.StreamId).Concat(new[] { "zahradky-horni-stanice", "office-test" });
+        var streamIds = _streams().Streams.Select(s => s.StreamId)
+            .Concat(new[] { "zahradky-horni-stanice", "office-test", "office-test-camera" });
         DetectorLaunchBuilder.Save(_doc, _config.DetectorsJsonPath, streamIds);
     }
 
