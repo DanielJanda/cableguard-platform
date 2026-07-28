@@ -36,23 +36,80 @@
     </Style>
     <Style TargetType="ComboBox">
       <Setter Property="Background" Value="{StaticResource BgInput}"/>
-      <Setter Property="Foreground" Value="#FF111318"/>
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
       <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}"/>
       <Setter Property="Padding" Value="6,4"/>
+    </Style>
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Background" Value="#FF2C313A"/>
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
+      <Setter Property="Padding" Value="8,4"/>
+      <Style.Triggers>
+        <Trigger Property="IsHighlighted" Value="True">
+          <Setter Property="Background" Value="#FF3A5A8C"/>
+          <Setter Property="Foreground" Value="#FFFFFFFF"/>
+        </Trigger>
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="#FF2E7D32"/>
+          <Setter Property="Foreground" Value="#FFFFFFFF"/>
+        </Trigger>
+      </Style.Triggers>
     </Style>
     <Style TargetType="ListBox">
       <Setter Property="Background" Value="{StaticResource BgPanel}"/>
       <Setter Property="Foreground" Value="#FFEEF1F5"/>
       <Setter Property="BorderThickness" Value="0"/>
     </Style>
+    <Style TargetType="ListBoxItem">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
+      <Setter Property="Padding" Value="8,6"/>
+      <Style.Triggers>
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="#FF3A5A8C"/>
+          <Setter Property="Foreground" Value="#FFFFFFFF"/>
+        </Trigger>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="#FF343B48"/>
+          <Setter Property="Foreground" Value="#FFFFFFFF"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
     <Style TargetType="CheckBox">
       <Setter Property="Foreground" Value="#FFEEF1F5"/>
       <Setter Property="Margin" Value="0,4,0,4"/>
     </Style>
+    <!-- Tab hlavičky: světlý text (systémový styl jinak kreslí černě) -->
     <Style TargetType="TabItem">
-      <Setter Property="Foreground" Value="#FF111318"/>
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
+      <Setter Property="Background" Value="#FF2C313A"/>
       <Setter Property="Padding" Value="12,6"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TabItem">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="#FF4A5260"
+                    BorderThickness="1,1,1,0" Margin="1,0" Padding="{TemplateBinding Padding}" CornerRadius="4,4,0,0">
+              <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                RecognizesAccessKey="True">
+                <ContentPresenter.Resources>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="#FFEEF1F5"/>
+                  </Style>
+                </ContentPresenter.Resources>
+              </ContentPresenter>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#FF3A5A8C"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#FF343B48"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
     <Style TargetType="TabControl">
       <Setter Property="Background" Value="#FF1B1E24"/>

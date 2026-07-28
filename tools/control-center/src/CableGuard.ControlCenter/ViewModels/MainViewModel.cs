@@ -60,9 +60,19 @@ public sealed class MainViewModel : ObservableObject
         StartDetectorPreviewCommand = new AsyncRelayCommand(StartDetectorPreviewAsync);
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-        _refreshTimer.Tick += async (_, _) => { if (!_busy) await RefreshAllAsync(); };
+        _refreshTimer.Tick += (_, _) =>
+        {
+            if (_busy) return;
+            _ = RefreshAllSafeAsync();
+        };
         _refreshTimer.Start();
-        _ = RefreshAllAsync();
+        _ = RefreshAllSafeAsync();
+    }
+
+    private async Task RefreshAllSafeAsync()
+    {
+        try { await RefreshAllAsync(); }
+        catch (Exception ex) { _logger.Warn($"Refresh failed: {ex.Message}"); }
     }
 
     public AdminModeViewModel Mode { get; }

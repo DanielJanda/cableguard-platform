@@ -1,14 +1,16 @@
 # CableGuard
 
-Last verified: 2026-07-27
+Last verified: 2026-07-28
+
+**Vstupní bod pro lidi:** [`../../DOKUMENTACE.md`](../../DOKUMENTACE.md) (kořen platformy).
 
 Verified against:
 
-- cableguard-platform `main` commit `5400cb3`
-- cableguard-monitor `main` commit `f085ef0`
-- cableguard-detector `main` commit `c628a2f`
+- cableguard-platform `main` / feature větve dle CURRENT_STATE
+- cableguard-monitor `main`
+- cableguard-detector (fall na feature větvích, viz CURRENT_STATE)
 
-Statusy používané v celé dokumentaci: **CONFIRMED** (ověřeno akceptačním testem), **IMPLEMENTED** (v kódu na main, bez plné akceptace), **EXPERIMENTAL** (feature branch / draft PR), **PLANNED** (neexistuje), **DEFERRED** (záměrně odloženo).
+Statusy: **CONFIRMED** · **IMPLEMENTED** · **EXPERIMENTAL** · **PLANNED** · **DEFERRED**.
 
 ---
 

@@ -13,8 +13,7 @@ public sealed class HttpProber : IHttpProber
             using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             return (int)resp.StatusCode;
         }
-        catch (HttpRequestException) { return null; }
-        catch (TaskCanceledException) { return null; }
+        catch (Exception) { return null; } // probe — connection reset / timeout / DNS = offline
     }
 
     public async Task<int?> OptionsStatusCodeAsync(string url, CancellationToken ct = default)
@@ -22,11 +21,10 @@ public sealed class HttpProber : IHttpProber
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Options, url);
-            using var resp = await _http.SendAsync(req, ct);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             return (int)resp.StatusCode;
         }
-        catch (HttpRequestException) { return null; }
-        catch (TaskCanceledException) { return null; }
+        catch (Exception) { return null; }
     }
 
     public async Task<string?> GetBodyAsync(string url, CancellationToken ct = default)
@@ -37,7 +35,6 @@ public sealed class HttpProber : IHttpProber
             if (!resp.IsSuccessStatusCode) return null;
             return await resp.Content.ReadAsStringAsync(ct);
         }
-        catch (HttpRequestException) { return null; }
-        catch (TaskCanceledException) { return null; }
+        catch (Exception) { return null; }
     }
 }
