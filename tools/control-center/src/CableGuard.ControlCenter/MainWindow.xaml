@@ -509,12 +509,13 @@
           <CheckBox Content="Zapnout HARDWARE TEST MODE" IsChecked="{Binding TestMode}" Foreground="#FFFFCC80"/>
           <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
             <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
+            <Button Content="Kopírovat diagnostiku" Command="{Binding CopyDiagnosticsCommand}" Margin="8,0,0,0" Background="#FF3A5A8C"/>
             <Button Content="Vše vyp (ALL OFF)" Command="{Binding AllOffCommand}" Margin="8,0,0,0"/>
           </StackPanel>
           <TextBlock Text="{Binding DeviceLine}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,6"/>
           <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,6"/>
           <TextBlock Text="{Binding LastOp, StringFormat=Last operation: {0}}" Foreground="#FFFFCC80" Margin="0,0,0,12"/>
-          <TextBlock Text="Impulz relé (max 500 ms, vyžaduje TEST MODE)" FontWeight="SemiBold"/>
+          <TextBlock Text="Impulz relé (max 250 ms, vyžaduje TEST MODE + CONNECTED probe)" FontWeight="SemiBold"/>
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
             <Button Content="Relé 1" Command="{Binding Pulse1Command}"/>
             <Button Content="Relé 2" Command="{Binding Pulse2Command}"/>
@@ -524,9 +525,9 @@
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
             <Button Content="ZELENÁ" Command="{Binding GreenCommand}" Background="#FF2E7D32"/>
             <Button Content="ČERVENÁ" Command="{Binding RedCommand}" Background="#FF8E2A2A"/>
-            <Button Content="Bzučák ≤500 ms" Command="{Binding BuzzerCommand}"/>
+            <Button Content="Bzučák ≤250 ms" Command="{Binding BuzzerCommand}"/>
           </StackPanel>
-          <TextBlock Text="Žádná automatická vazba detektor pádu → relé. Pouze ruční diagnostika."
+          <TextBlock Text="Žádná automatická vazba detektor pádu → relé. Pouze ruční diagnostika. CONNECTED = SDK load + open + DI/DO read."
                      Foreground="#FFFFCC80" FontSize="12"/>
         </StackPanel>
       </TabItem>
