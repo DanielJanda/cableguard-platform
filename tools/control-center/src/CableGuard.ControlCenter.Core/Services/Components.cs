@@ -174,7 +174,7 @@ public sealed class ComponentFactory
             (primary?.Id ?? "fall-zahradky-upper") + ".err.log");
 
         return new ServiceComponent(
-            ComponentId.Detector, "Fall Detector", configured, logFile,
+            ComponentId.Detector, "Detektor pádu", configured, logFile,
             statusFunc: ct =>
             {
                 if (!configured || primary is null)
@@ -220,7 +220,7 @@ public sealed class ComponentFactory
         return new DetectorInstance
         {
             Id = "fall-zahradky-upper",
-            DisplayName = "Fall Detector – Zahrádky Upper",
+            DisplayName = "Detektor pádu – Zahrádky horní",
             DetectorType = "fall",
             InputStream = _config.ProductionStream,
             ScriptRelative = "apps/zahradky_horni_pad.py",

@@ -230,7 +230,7 @@ public sealed class CameraRowViewModel : ObservableObject
 
     public CameraEntry Camera { get; }
     public bool IsPrimary { get; }
-    public string Title => IsPrimary ? $"{Camera.DisplayName}  ★ PRIMARY" : Camera.DisplayName;
+    public string Title => IsPrimary ? $"{Camera.DisplayName}  ★ PRIMÁRNÍ" : Camera.DisplayName;
     public string Subtitle =>
         $"IP: {Camera.Host}:{Camera.RtspPort}  profile: {Camera.Profile}  transport: {Camera.Transport}  path: {Camera.MediaMtxPath}  {(Camera.Enabled ? "" : "(disabled)")}";
     public string EnableLabel => Camera.Enabled ? "Disable" : "Enable";
@@ -246,10 +246,10 @@ public sealed class CameraRowViewModel : ObservableObject
 
     public async Task RefreshAsync(IMediaMtxApi api)
     {
-        if (!Camera.Enabled) { Status = "DISABLED"; return; }
+        if (!Camera.Enabled) { Status = "VYPNUTO"; return; }
         var path = string.IsNullOrWhiteSpace(Camera.MediaMtxPath) ? Camera.CameraId : Camera.MediaMtxPath;
         var ready = await api.IsPathReadyAsync(path);
-        Status = ready switch { true => "LIVE", false => "OFFLINE", null => "MediaMTX?" };
+        Status = ready switch { true => "ŽIVĚ", false => "OFFLINE", null => "MediaMTX?" };
     }
 
     private void EditCredentials()

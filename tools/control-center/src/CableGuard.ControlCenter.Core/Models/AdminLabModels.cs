@@ -103,6 +103,6 @@ public sealed class ScenariosDocument
 public static class FallAlgorithmInfo
 {
     public const string Note =
-        "ANGLE / TORSO / MOV / AXIS / BOX / weights / risk threshold are frozen and protected by golden-master tests. " +
-        "Edit only via detector algorithm change + new version + tests — never via Admin GUI.";
+        "Parametry ANGLE / TORSO / MOV / AXIS / váhy / risk threshold jsou zamčené a chráněné golden-master testy. " +
+        "Měnit jen přes změnu algoritmu v detektoru + nová verze + testy — nikdy přes Admin GUI.";
 }

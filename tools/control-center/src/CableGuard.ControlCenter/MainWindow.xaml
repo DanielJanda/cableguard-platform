@@ -1,117 +1,175 @@
 <Window x:Class="CableGuard.ControlCenter.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="CableGuard Admin Studio — Control Center"
+        Title="CableGuard Admin Studio"
         Width="1180" Height="780"
-        Background="#FF1B1E24" FontFamily="Segoe UI">
+        Background="#FF1B1E24" FontFamily="Segoe UI" FontSize="13"
+        Foreground="#FFEEF1F5">
   <Window.Resources>
-    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#FFDDE1E7"/></Style>
+    <!-- Čitelné výchozí styly — světlý text na tmavém pozadí -->
+    <SolidColorBrush x:Key="Fg" Color="#FFEEF1F5"/>
+    <SolidColorBrush x:Key="FgMuted" Color="#FFB8C0CC"/>
+    <SolidColorBrush x:Key="BgPanel" Color="#FF23272F"/>
+    <SolidColorBrush x:Key="BgInput" Color="#FF2C313A"/>
+    <SolidColorBrush x:Key="BorderSoft" Color="#FF4A5260"/>
+
+    <Style TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Fg}"/>
+    </Style>
+    <Style TargetType="Label">
+      <Setter Property="Foreground" Value="{StaticResource Fg}"/>
+    </Style>
     <Style TargetType="Button">
-      <Setter Property="Margin" Value="4,0"/><Setter Property="Padding" Value="10,4"/>
-      <Setter Property="Background" Value="#FF2C313A"/><Setter Property="Foreground" Value="#FFDDE1E7"/>
-      <Setter Property="BorderBrush" Value="#FF444B57"/>
+      <Setter Property="Margin" Value="4,0"/>
+      <Setter Property="Padding" Value="12,6"/>
+      <Setter Property="Background" Value="#FF3A4250"/>
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="Background" Value="{StaticResource BgInput}"/>
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
+      <Setter Property="CaretBrush" Value="#FFEEF1F5"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}"/>
+      <Setter Property="Padding" Value="6,4"/>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Background" Value="{StaticResource BgInput}"/>
+      <Setter Property="Foreground" Value="#FF111318"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}"/>
+      <Setter Property="Padding" Value="6,4"/>
+    </Style>
+    <Style TargetType="ListBox">
+      <Setter Property="Background" Value="{StaticResource BgPanel}"/>
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style TargetType="CheckBox">
+      <Setter Property="Foreground" Value="#FFEEF1F5"/>
+      <Setter Property="Margin" Value="0,4,0,4"/>
+    </Style>
+    <Style TargetType="TabItem">
+      <Setter Property="Foreground" Value="#FF111318"/>
+      <Setter Property="Padding" Value="12,6"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style TargetType="TabControl">
+      <Setter Property="Background" Value="#FF1B1E24"/>
+      <Setter Property="BorderThickness" Value="0"/>
     </Style>
     <Style x:Key="StatusBadge" TargetType="TextBlock">
-      <Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#FF9AA3AF"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="{StaticResource FgMuted}"/>
       <Style.Triggers>
-        <DataTrigger Binding="{Binding Status}" Value="RUNNING"><Setter Property="Foreground" Value="#FF4CAF50"/></DataTrigger>
-        <DataTrigger Binding="{Binding Status}" Value="LIVE"><Setter Property="Foreground" Value="#FF4CAF50"/></DataTrigger>
-        <DataTrigger Binding="{Binding Live}" Value="LIVE"><Setter Property="Foreground" Value="#FF4CAF50"/></DataTrigger>
-        <DataTrigger Binding="{Binding Status}" Value="STOPPED"><Setter Property="Foreground" Value="#FF9AA3AF"/></DataTrigger>
-        <DataTrigger Binding="{Binding Status}" Value="FAULT"><Setter Property="Foreground" Value="#FFE53935"/></DataTrigger>
-        <DataTrigger Binding="{Binding Status}" Value="OFFLINE"><Setter Property="Foreground" Value="#FFE53935"/></DataTrigger>
-        <DataTrigger Binding="{Binding Live}" Value="OFFLINE"><Setter Property="Foreground" Value="#FFE53935"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="BĚŽÍ"><Setter Property="Foreground" Value="#FF66BB6A"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="RUNNING"><Setter Property="Foreground" Value="#FF66BB6A"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="ŽIVĚ"><Setter Property="Foreground" Value="#FF66BB6A"/></DataTrigger>
+        <DataTrigger Binding="{Binding Live}" Value="ŽIVĚ"><Setter Property="Foreground" Value="#FF66BB6A"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="LIVE"><Setter Property="Foreground" Value="#FF66BB6A"/></DataTrigger>
+        <DataTrigger Binding="{Binding Live}" Value="LIVE"><Setter Property="Foreground" Value="#FF66BB6A"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="ZASTAVENO"><Setter Property="Foreground" Value="{StaticResource FgMuted}"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="STOPPED"><Setter Property="Foreground" Value="{StaticResource FgMuted}"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="PORUCHA"><Setter Property="Foreground" Value="#FFEF5350"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="FAULT"><Setter Property="Foreground" Value="#FFEF5350"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="OFFLINE"><Setter Property="Foreground" Value="#FFEF5350"/></DataTrigger>
+        <DataTrigger Binding="{Binding Live}" Value="OFFLINE"><Setter Property="Foreground" Value="#FFEF5350"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="ZHORŠENO"><Setter Property="Foreground" Value="#FFFFB74D"/></DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="VYPNUTO"><Setter Property="Foreground" Value="#FF90A4AE"/></DataTrigger>
       </Style.Triggers>
     </Style>
   </Window.Resources>
 
   <DockPanel>
-    <!-- Mode switch -->
     <Border DockPanel.Dock="Top" Padding="12,8" Background="{Binding Mode.ModeBannerBrush}">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <StackPanel Orientation="Horizontal">
-          <Button Content="OPERATIONS" Command="{Binding Mode.OperationsCommand}" FontWeight="Bold" Padding="14,6"/>
-          <Button Content="TEST LAB" Command="{Binding Mode.TestLabCommand}" FontWeight="Bold" Padding="14,6" Background="#FF6D4C00"/>
+          <Button Content="PROVOZ" Command="{Binding Mode.OperationsCommand}" FontWeight="Bold" Padding="14,6"/>
+          <Button Content="TESTOVÁNÍ" Command="{Binding Mode.TestLabCommand}" FontWeight="Bold" Padding="14,6" Background="#FF8B5A00"/>
         </StackPanel>
         <TextBlock Grid.Column="1" Text="{Binding Mode.ModeBanner}" FontWeight="SemiBold"
                    VerticalAlignment="Center" Margin="16,0" FontSize="14"/>
-        <TextBlock Grid.Column="2" Text="Admin Studio · 10.6.1.40" VerticalAlignment="Center" Foreground="#FFB0B8C4"/>
+        <TextBlock Grid.Column="2" Text="Admin Studio · 10.6.1.40" VerticalAlignment="Center" Foreground="#FFD0D6E0"/>
       </Grid>
     </Border>
 
-    <TabControl Background="#FF1B1E24" BorderThickness="0">
-
-      <!-- OVERVIEW -->
-      <TabItem Header="Overview">
+    <TabControl>
+      <!-- PŘEHLED -->
+      <TabItem Header="Přehled">
         <Grid Margin="16">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
           </Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="SYSTEM " FontSize="28" FontWeight="Bold"/>
-            <TextBlock Text="{Binding SystemStatus}" FontSize="28" FontWeight="Bold" Foreground="#FF4CAF50"/>
+            <TextBlock Text="SYSTÉM  " FontSize="28" FontWeight="Bold"/>
+            <TextBlock Text="{Binding SystemStatus}" FontSize="28" FontWeight="Bold" Foreground="#FF66BB6A"/>
           </StackPanel>
           <ItemsControl Grid.Row="1" ItemsSource="{Binding Services}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Grid Margin="0,3">
+                <Grid Margin="0,4">
                   <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="170"/><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="180"/><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/>
                   </Grid.ColumnDefinitions>
                   <TextBlock Text="{Binding Name}" FontSize="15"/>
                   <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="15" Style="{StaticResource StatusBadge}"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="12" Foreground="#FF9AA3AF"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource FgMuted}" TextWrapping="Wrap"/>
                 </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,16,0,0">
-            <Button Content="START PRODUCTION" FontWeight="Bold" Padding="16,8" Background="#FF2E7D32" Command="{Binding StartAllCommand}"/>
-            <Button Content="STOP ALL" Padding="16,8" Background="#FF8E2A2A" Command="{Binding StopAllCommand}"/>
-            <Button Content="OPEN MONITOR" Padding="16,8" Command="{Binding OpenDashboardCommand}"/>
-            <Button Content="OPEN KIOSK" Padding="16,8" Command="{Binding OpenKioskCommand}"/>
-            <Button Content="OPEN TEST LAB" Padding="16,8" Background="#FF6D4C00" Command="{Binding OpenTestLabCommand}"/>
-            <Button Content="Refresh" Padding="16,8" Command="{Binding RefreshCommand}"/>
+
+          <Border Grid.Row="2" Background="#FF1E3A5F" Padding="10" CornerRadius="4" Margin="0,14,0,8">
+            <TextBlock TextWrapping="Wrap" FontSize="13"
+                       Text="Náhled detekce: tlačítko „Detekce s náhledem“ otevře samostatné okno OpenCV s kostrou a ROI. Běžný START PRODUKCE běží bez okna (jen výpočet). Monitor / kiosk ukazují čisté video bez AI překryvu."/>
+          </Border>
+
+          <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,4,0,0">
+            <Button Content="START PRODUKCE" FontWeight="Bold" Padding="16,8" Background="#FF2E7D32" Command="{Binding StartAllCommand}"/>
+            <Button Content="STOP VŠE" Padding="16,8" Background="#FF8E2A2A" Command="{Binding StopAllCommand}"/>
+            <Button Content="DETEKCE S NÁHLEDEM" Padding="16,8" Background="#FFEF6C00" Foreground="#FF111318"
+                    FontWeight="Bold" Command="{Binding StartDetectorPreviewCommand}"/>
+            <Button Content="MONITOR" Padding="16,8" Command="{Binding OpenDashboardCommand}"/>
+            <Button Content="KIOSK" Padding="16,8" Command="{Binding OpenKioskCommand}"/>
+            <Button Content="TESTOVÁNÍ" Padding="16,8" Background="#FF8B5A00" Command="{Binding OpenTestLabCommand}"/>
+            <Button Content="Obnovit" Padding="16,8" Command="{Binding RefreshCommand}"/>
           </StackPanel>
-          <Border Grid.Row="3" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10">
-            <ScrollViewer><TextBlock Text="{Binding StartAllProgress}" FontFamily="Consolas" FontSize="12"/></ScrollViewer>
+          <Border Grid.Row="4" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10">
+            <ScrollViewer><TextBlock Text="{Binding StartAllProgress}" FontFamily="Consolas" FontSize="12" Foreground="#FFDDE1E7"/></ScrollViewer>
           </Border>
         </Grid>
       </TabItem>
 
-      <!-- SCENARIOS -->
-      <TabItem Header="Scenarios" DataContext="{Binding Scenarios}">
+      <TabItem Header="Scénáře" DataContext="{Binding Scenarios}">
         <Grid Margin="16">
           <Grid.ColumnDefinitions><ColumnDefinition Width="320"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-          <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" DisplayMemberPath="DisplayName"
-                   Background="#FF23272F" Foreground="#FFDDE1E7" BorderThickness="0"/>
+          <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" DisplayMemberPath="DisplayName"/>
           <DockPanel Grid.Column="1" Margin="16,0,0,0">
             <StackPanel DockPanel.Dock="Top">
               <TextBlock Text="{Binding Selected.DisplayName}" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding Selected.Description}" Foreground="#FF9AA3AF" Margin="0,4,0,8" TextWrapping="Wrap"/>
-              <Button Content="RUN SCENARIO" HorizontalAlignment="Left" Padding="16,8" Background="#FF2E7D32"
+              <TextBlock Text="{Binding Selected.Description}" Foreground="{StaticResource FgMuted}" Margin="0,4,0,8" TextWrapping="Wrap"/>
+              <Button Content="SPUSTIT SCÉNÁŘ" HorizontalAlignment="Left" Padding="16,8" Background="#FF2E7D32"
                       Command="{Binding RunCommand}" Margin="0,0,0,12"/>
-              <TextBlock Text="Diff oproti aktuálnímu runtime:" FontWeight="SemiBold"/>
+              <TextBlock Text="Rozdíl oproti aktuálnímu nastavení:" FontWeight="SemiBold"/>
             </StackPanel>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4">
-              <TextBlock Text="{Binding DiffText}" FontFamily="Consolas" FontSize="12"/>
+              <TextBlock Text="{Binding DiffText}" FontFamily="Consolas" FontSize="12" Foreground="#FFDDE1E7"/>
             </Border>
           </DockPanel>
         </Grid>
       </TabItem>
 
-      <!-- CAMERAS -->
-      <TabItem Header="Cameras" DataContext="{Binding Cameras}">
+      <TabItem Header="Kamery" DataContext="{Binding Cameras}">
         <Grid Margin="16">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="{Binding RegistryStatus}" Foreground="#FF9AA3AF" VerticalAlignment="Center"/>
-            <Button Content="+ ADD CAMERA" Command="{Binding AddCommand}" Margin="12,0,0,0" Background="#FF3A5A8C"/>
-            <Button Content="Reload" Command="{Binding ReloadCommand}"/>
+            <TextBlock Text="{Binding RegistryStatus}" Foreground="{StaticResource FgMuted}" VerticalAlignment="Center"/>
+            <Button Content="+ Přidat kameru" Command="{Binding AddCommand}" Margin="12,0,0,0" Background="#FF3A5A8C"/>
+            <Button Content="Načíst znovu" Command="{Binding ReloadCommand}"/>
           </StackPanel>
           <ItemsControl Grid.Row="1" ItemsSource="{Binding Cameras}">
             <ItemsControl.ItemTemplate>
@@ -122,36 +180,31 @@
                     <StackPanel>
                       <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Status}" Margin="14,0,0,0" FontSize="15" Style="{StaticResource StatusBadge}"/>
+                        <TextBlock Text="{Binding Status}" Margin="14,0,0,0" Style="{StaticResource StatusBadge}"/>
                       </StackPanel>
-                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
-                      <TextBlock Text="{Binding TestResult}" FontSize="12" Foreground="#FF7FB2E5" Margin="0,3,0,0"/>
+                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                      <Button Content="Edit" Command="{Binding EditCommand}"/>
-                      <Button Content="Test" Command="{Binding TestCommand}"/>
-                      <Button Content="Preview" Command="{Binding PreviewCommand}"/>
-                      <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
-                      <Button Content="Credentials" Command="{Binding EditCredentialsCommand}"/>
-                      <Button Content="Set as primary" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                      <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="Primární" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
+                      <Button Content="Přihlášení" Command="{Binding EditCredentialsCommand}"/>
                     </StackPanel>
                   </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <TextBlock Grid.Row="2" Text="{Binding SwitchProgress}" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0"/>
+          <TextBlock Grid.Row="2" Text="{Binding SwitchProgress}" Foreground="#FFFFCC80" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </Grid>
       </TabItem>
 
-      <!-- STREAMS -->
-      <TabItem Header="Streams" DataContext="{Binding Streams}">
+      <TabItem Header="Streamy" DataContext="{Binding Streams}">
         <Grid Margin="16">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="{Binding Status}" Foreground="#FF9AA3AF" VerticalAlignment="Center"/>
-            <Button Content="+ ADD STREAM" Command="{Binding AddCommand}" Margin="12,0,0,0" Background="#FF3A5A8C"/>
-            <Button Content="Reload" Command="{Binding ReloadCommand}"/>
+            <TextBlock Text="{Binding Status}" Foreground="{StaticResource FgMuted}"/>
+            <Button Content="Načíst znovu" Command="{Binding ReloadCommand}" Margin="12,0,0,0"/>
+            <Button Content="+ Stream" Command="{Binding AddCommand}"/>
           </StackPanel>
           <ItemsControl Grid.Row="1" ItemsSource="{Binding Items}">
             <ItemsControl.ItemTemplate>
@@ -162,13 +215,13 @@
                     <StackPanel>
                       <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Live}" Margin="14,0,0,0" FontSize="15" Style="{StaticResource StatusBadge}"/>
+                        <TextBlock Text="{Binding Live}" Margin="14,0,0,0" Style="{StaticResource StatusBadge}"/>
                       </StackPanel>
-                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
+                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                      <Button Content="Preview" Command="{Binding PreviewCommand}"/>
-                      <Button Content="Apply mapping" Command="{Binding ApplyCommand}" Background="#FF3A5A8C"/>
+                      <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="Použít" Command="{Binding ApplyCommand}"/>
                     </StackPanel>
                   </Grid>
                 </Border>
@@ -178,15 +231,18 @@
         </Grid>
       </TabItem>
 
-      <!-- DETECTORS -->
-      <TabItem Header="Detectors" DataContext="{Binding Detectors}">
+      <TabItem Header="Detektory" DataContext="{Binding Detectors}">
         <Grid Margin="16">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="{Binding Status}" Foreground="#FF9AA3AF"/>
-            <Button Content="Reload" Command="{Binding ReloadCommand}" Margin="12,0,0,0"/>
+            <TextBlock Text="{Binding Status}" Foreground="{StaticResource FgMuted}"/>
+            <Button Content="Načíst znovu" Command="{Binding ReloadCommand}" Margin="12,0,0,0"/>
           </StackPanel>
-          <ItemsControl Grid.Row="1" ItemsSource="{Binding Items}">
+          <Border Grid.Row="1" Background="#FF3E2723" Padding="10" CornerRadius="4" Margin="0,0,0,10">
+            <TextBlock TextWrapping="Wrap" Foreground="#FFFFE0B2"
+                       Text="Náhled videa s detekcí = tlačítko „Náhled videa“. Otevře se okno OpenCV (ne uvnitř Admin Studio). START bez náhledu běží na pozadí."/>
+          </Border>
+          <ItemsControl Grid.Row="2" ItemsSource="{Binding Items}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Border Background="#FF23272F" CornerRadius="6" Padding="12" Margin="0,4">
@@ -196,153 +252,149 @@
                       <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding Status}" Margin="14,0,0,0" Style="{StaticResource StatusBadge}"/>
-                        <TextBlock Text="{Binding Detail}" Margin="8,0,0,0" FontSize="12" Foreground="#FF9AA3AF"/>
+                        <TextBlock Text="{Binding Detail}" Margin="8,0,0,0" FontSize="12" Foreground="{StaticResource FgMuted}"/>
                       </StackPanel>
-                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#FF9AA3AF" Margin="0,3,0,0"/>
+                      <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                      <Button Content="START" Command="{Binding StartCommand}" Background="#FF2E7D32"/>
-                      <Button Content="STOP" Command="{Binding StopCommand}"/>
-                      <Button Content="OPEN DEBUG VIEW" Command="{Binding DebugCommand}" Background="#FF6D4C00"/>
+                      <Button Content="Start (bez okna)" Command="{Binding StartCommand}" Background="#FF2E7D32"/>
+                      <Button Content="Stop" Command="{Binding StopCommand}"/>
+                      <Button Content="Náhled videa" Command="{Binding DebugCommand}" Background="#FFEF6C00" Foreground="#FF111318" FontWeight="Bold"/>
                     </StackPanel>
                   </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <Border Grid.Row="2" Background="#FF2A2220" Padding="10" CornerRadius="4" Margin="0,8,0,0">
+          <Border Grid.Row="3" Background="#FF2A2220" Padding="10" CornerRadius="4" Margin="0,8,0,0">
             <TextBlock Text="{Binding AlgorithmNote}" TextWrapping="Wrap" FontSize="12" Foreground="#FFFFCC80"/>
           </Border>
         </Grid>
       </TabItem>
 
-      <!-- CALIBRATION / ROI -->
-      <TabItem Header="Calibration" DataContext="{Binding Calibration}">
+      <TabItem Header="Kalibrace ROI" DataContext="{Binding Calibration}">
         <Grid Margin="16">
           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="280"/></Grid.ColumnDefinitions>
           <Border Background="#FF0E1014" CornerRadius="4" Margin="0,0,12,0"
                   MouseLeftButtonDown="RoiCanvas_MouseLeftButtonDown" Cursor="Cross">
             <Grid>
-              <TextBlock Text="Klikni sem pro body ROI polygonu&#x0a;(živý snapshot = Preview kamery v prohlížeči;&#x0a;canvas je kalibrační plátno 1280×720)"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FF6A7380"
+              <TextBlock Text="Klikni sem pro body ROI polygonu&#x0a;(živý snímek = Náhled kamery v prohlížeči;&#x0a;plátno je kalibrační 1280×720)"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FF8A93A0"
                          TextAlignment="Center"/>
               <Canvas x:Name="RoiCanvas" ClipToBounds="True"/>
             </Grid>
           </Border>
           <StackPanel Grid.Column="1">
-            <TextBlock Text="ROI profile" FontWeight="SemiBold"/>
-            <TextBox Text="{Binding ProfileId}" Margin="0,4,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-            <TextBlock Text="{Binding Status}" Foreground="#FF9AA3AF" Margin="0,0,0,8"/>
+            <TextBlock Text="Profil ROI" FontWeight="SemiBold"/>
+            <TextBox Text="{Binding ProfileId}" Margin="0,4,0,8"/>
+            <TextBlock Text="{Binding Status}" Foreground="{StaticResource FgMuted}" Margin="0,0,0,8"/>
             <TextBlock Text="{Binding PointsText}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
-            <Button Content="RESET" Command="{Binding ResetCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
-            <Button Content="FULL FRAME" Command="{Binding FullFrameCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
-            <Button Content="LOAD" Command="{Binding LoadCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
-            <Button Content="SAVE AS..." Command="{Binding SaveCommand}" Background="#FF2E7D32" HorizontalAlignment="Stretch"/>
+            <Button Content="Reset" Command="{Binding ResetCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="Celý snímek" Command="{Binding FullFrameCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="Načíst" Command="{Binding LoadCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="Uložit jako…" Command="{Binding SaveCommand}" Background="#FF2E7D32" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </Grid>
       </TabItem>
 
-      <!-- NOTIFICATIONS -->
-      <TabItem Header="Notifications" DataContext="{Binding Notifications}">
+      <TabItem Header="Notifikace" DataContext="{Binding Notifications}">
         <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
           <TextBlock Text="Telegram" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
-          <CheckBox Content="Enabled" IsChecked="{Binding TelegramEnabled}" Foreground="#FFDDE1E7" Margin="0,0,0,6"/>
+          <CheckBox Content="Zapnuto" IsChecked="{Binding TelegramEnabled}"/>
           <TextBlock Text="{Binding CredStatus}" Foreground="#FF7FB2E5" Margin="0,0,0,6"/>
-          <TextBlock Text="Target profile"/>
-          <TextBox Text="{Binding TargetLabel}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-          <CheckBox Content="Fall alarm" IsChecked="{Binding NotifyFall}" Foreground="#FFDDE1E7"/>
-          <CheckBox Content="Barrier event" IsChecked="{Binding NotifyBarrier}" Foreground="#FFDDE1E7"/>
-          <CheckBox Content="Technical errors" IsChecked="{Binding NotifyErrors}" Foreground="#FFDDE1E7" Margin="0,0,0,12"/>
+          <TextBlock Text="Profil cíle"/>
+          <TextBox Text="{Binding TargetLabel}" Margin="0,2,0,8"/>
+          <CheckBox Content="Alarm pádu" IsChecked="{Binding NotifyFall}"/>
+          <CheckBox Content="Událost bariéry" IsChecked="{Binding NotifyBarrier}"/>
+          <CheckBox Content="Technické chyby" IsChecked="{Binding NotifyErrors}" Margin="0,0,0,12"/>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-            <Button Content="SEND TEST MESSAGE" Command="{Binding TestCommand}" Background="#FF3A5A8C"/>
-            <Button Content="Change credential" Command="{Binding ChangeCredCommand}"/>
-            <Button Content="Save" Command="{Binding SaveCommand}"/>
+            <Button Content="Odeslat test" Command="{Binding TestCommand}" Background="#FF3A5A8C"/>
+            <Button Content="Změnit přihlášení" Command="{Binding ChangeCredCommand}"/>
+            <Button Content="Uložit" Command="{Binding SaveCommand}"/>
           </StackPanel>
           <TextBlock Text="Event Core publisher" FontSize="16" FontWeight="SemiBold"/>
           <TextBlock Text="{Binding EventCoreStatus}" Foreground="#FFFFCC80" TextWrapping="Wrap" Margin="0,4,0,0"/>
         </StackPanel>
       </TabItem>
 
-      <!-- HARDWARE -->
       <TabItem Header="Hardware" DataContext="{Binding Hardware}">
         <StackPanel Margin="16">
           <Border Background="#FF5D2A00" Padding="12" CornerRadius="4" Margin="0,0,0,12">
             <TextBlock Text="{Binding Banner}" FontWeight="Bold" TextWrapping="Wrap"/>
           </Border>
-          <CheckBox Content="Enable HARDWARE TEST MODE" IsChecked="{Binding TestMode}" Foreground="#FFFFCC80" Margin="0,0,0,8"/>
-          <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#FF9AA3AF" Margin="0,0,0,12"/>
-          <TextBlock Text="Relay pulse" FontWeight="SemiBold"/>
+          <CheckBox Content="Zapnout HARDWARE TEST MODE" IsChecked="{Binding TestMode}" Foreground="#FFFFCC80"/>
+          <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,12"/>
+          <TextBlock Text="Impulz relé" FontWeight="SemiBold"/>
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
-            <Button Content="Relay 1 PULSE" Command="{Binding Pulse1Command}"/>
-            <Button Content="Relay 2 PULSE" Command="{Binding Pulse2Command}"/>
-            <Button Content="Relay 3 PULSE" Command="{Binding Pulse3Command}"/>
+            <Button Content="Relé 1" Command="{Binding Pulse1Command}"/>
+            <Button Content="Relé 2" Command="{Binding Pulse2Command}"/>
+            <Button Content="Relé 3" Command="{Binding Pulse3Command}"/>
           </StackPanel>
-          <TextBlock Text="Semaphore" FontWeight="SemiBold"/>
+          <TextBlock Text="Semafor" FontWeight="SemiBold"/>
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
-            <Button Content="GREEN" Command="{Binding GreenCommand}" Background="#FF2E7D32"/>
-            <Button Content="RED" Command="{Binding RedCommand}" Background="#FF8E2A2A"/>
-            <Button Content="BUZZER 2 s" Command="{Binding BuzzerCommand}"/>
-            <Button Content="ALL OFF" Command="{Binding AllOffCommand}"/>
+            <Button Content="ZELENÁ" Command="{Binding GreenCommand}" Background="#FF2E7D32"/>
+            <Button Content="ČERVENÁ" Command="{Binding RedCommand}" Background="#FF8E2A2A"/>
+            <Button Content="Bzučák 2 s" Command="{Binding BuzzerCommand}"/>
+            <Button Content="Vše vyp" Command="{Binding AllOffCommand}"/>
           </StackPanel>
-          <TextBlock Text="Žádná automatická vazba fall detector → relay v tomto úkolu."
+          <TextBlock Text="Žádná automatická vazba detektor pádu → relé v tomto úkolu."
                      Foreground="#FFFFCC80" FontSize="12"/>
         </StackPanel>
       </TabItem>
 
-      <!-- VIDEO LAB -->
-      <TabItem Header="Video Lab" DataContext="{Binding VideoLab}">
+      <TabItem Header="Video laboratoř" DataContext="{Binding VideoLab}">
         <ScrollViewer Margin="16" VerticalScrollBarVisibility="Auto">
           <StackPanel>
             <Border Background="#FF1E3A5F" Padding="10" CornerRadius="4" Margin="0,0,0,12">
               <TextBlock TextWrapping="Wrap" FontWeight="SemiBold"
-                         Text="VIDEO LAB — TRANSPORT ≠ GLASS-TO-GLASS ≠ DETECTOR FRESHNESS. LIVE ≠ REALTIME. WebRTC RTT/FPS are not G2G latency."/>
+                         Text="Oddělujeme: doprava (transport) ≠ glass-to-glass latence ≠ čerstvost detektoru. LIVE v monitoru ≠ REALTIME zde. RTT/FPS nejsou G2G latence."/>
             </Border>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <TextBlock Text="Stream:" VerticalAlignment="Center" Margin="0,0,8,0"/>
               <ComboBox Width="260" ItemsSource="{Binding StreamIds}" SelectedItem="{Binding SelectedStreamId}"/>
-              <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
-              <Button Content="Open WHEP Probe" Command="{Binding OpenProbeCommand}" Background="#FF3A5A8C"/>
-              <Button Content="Enable localhost metrics" Command="{Binding EnableMetricsCommand}"/>
+              <Button Content="Obnovit" Command="{Binding RefreshCommand}"/>
+              <Button Content="WHEP sonda" Command="{Binding OpenProbeCommand}" Background="#FF3A5A8C"/>
+              <Button Content="Zapnout lokální metriky" Command="{Binding EnableMetricsCommand}"/>
             </StackPanel>
-            <TextBlock Text="{Binding MetricsStatus}" Foreground="#FF9AA3AF" Margin="0,0,0,8"/>
+            <TextBlock Text="{Binding MetricsStatus}" Foreground="{StaticResource FgMuted}" Margin="0,0,0,8"/>
 
-            <TextBlock Text="Live Metrics / VIDEO HEALTH" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="Živé metriky / stav videa" FontSize="16" FontWeight="SemiBold"/>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,4,0,12">
-              <TextBlock Text="{Binding LiveSummary}" FontFamily="Consolas" FontSize="12"/>
+              <TextBlock Text="{Binding LiveSummary}" FontFamily="Consolas" FontSize="12" Foreground="#FFDDE1E7"/>
             </Border>
 
             <TextBlock Text="{Binding G2GDisplay}" FontSize="16" FontWeight="Bold" Foreground="#FFFFCC80" Margin="0,0,0,8"/>
-            <TextBlock Text="Latency Test (manual)" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="Test latence (ruční)" FontSize="16" FontWeight="SemiBold"/>
             <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
-              <Button Content="Open latency pattern" Command="{Binding OpenLatencyPatternCommand}"/>
-              <TextBox Width="100" Text="{Binding ManualLatencyText}" Background="#FF2C313A" Foreground="#FFDDE1E7" Margin="8,0"/>
+              <Button Content="Otevřít vzor času" Command="{Binding OpenLatencyPatternCommand}"/>
+              <TextBox Width="100" Text="{Binding ManualLatencyText}" Margin="8,0"/>
               <TextBlock Text="ms" VerticalAlignment="Center"/>
-              <Button Content="Record Manual Latency" Command="{Binding RecordManualLatencyCommand}" Background="#FF2E7D32"/>
+              <Button Content="Uložit ruční latenci" Command="{Binding RecordManualLatencyCommand}" Background="#FF2E7D32"/>
             </StackPanel>
-            <TextBlock Text="{Binding AutomatedLatencyStatus}" TextWrapping="Wrap" Foreground="#FF9AA3AF" Margin="0,0,0,12"/>
+            <TextBlock Text="{Binding AutomatedLatencyStatus}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,12"/>
 
-            <TextBlock Text="Detector Freshness (runtime only — NOT G2G)" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="Čerstvost detektoru (jen runtime — není G2G)" FontSize="16" FontWeight="SemiBold"/>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,4,0,12">
-              <TextBlock Text="{Binding DetectorFreshnessText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding DetectorFreshnessText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" Foreground="#FFDDE1E7"/>
             </Border>
 
-            <TextBlock Text="Camera Profiles" FontSize="16" FontWeight="SemiBold"/>
-            <Button Content="Audit mapped camera" Command="{Binding AuditCameraCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
-            <TextBlock Text="{Binding ProfileAudit}" TextWrapping="Wrap" Foreground="#FF9AA3AF" Margin="0,0,0,12"/>
+            <TextBlock Text="Profily kamer" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="Audit mapované kamery" Command="{Binding AuditCameraCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
+            <TextBlock Text="{Binding ProfileAudit}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,12"/>
 
-            <TextBlock Text="A/B Camera Benchmark" FontSize="16" FontWeight="SemiBold"/>
-            <Button Content="Run A/B snapshot" Command="{Binding RunAbBenchmarkCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
+            <TextBlock Text="A/B srovnání kamer" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="Spustit A/B snapshot" Command="{Binding RunAbBenchmarkCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,0,0,12">
-              <TextBlock Text="{Binding AbReport}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding AbReport}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" Foreground="#FFDDE1E7"/>
             </Border>
 
-            <TextBlock Text="Resource Monitor" FontSize="16" FontWeight="SemiBold"/>
-            <Button Content="Refresh resources" Command="{Binding RefreshResourcesCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
+            <TextBlock Text="Zátěž systému" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="Obnovit zdroje" Command="{Binding RefreshResourcesCommand}" HorizontalAlignment="Left" Margin="0,4,0,4"/>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4" Margin="0,0,0,12">
-              <TextBlock Text="{Binding ResourceText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding ResourceText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" Foreground="#FFDDE1E7"/>
             </Border>
 
-            <TextBlock Text="Soak Test" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="Dlouhodobý test (soak)" FontSize="16" FontWeight="SemiBold"/>
             <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
               <Button Content="1 min" Command="{Binding StartSoak1MinCommand}"/>
               <Button Content="15 min" Command="{Binding StartSoak15MinCommand}"/>
@@ -352,57 +404,54 @@
             </StackPanel>
             <TextBlock Text="{Binding SoakStatus}" TextWrapping="Wrap" Margin="0,0,0,8"/>
 
-            <TextBlock Text="Failure Injection (TEST MODE)" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="Vkládání poruch (TEST)" FontSize="16" FontWeight="SemiBold"/>
             <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
               <Button Content="Restart MediaMTX" Command="{Binding InjectRestartMediaMtxCommand}" Background="#FF6D4C00"/>
-              <Button Content="Restart Detector" Command="{Binding InjectRestartDetectorCommand}" Background="#FF6D4C00"/>
+              <Button Content="Restart detektoru" Command="{Binding InjectRestartDetectorCommand}" Background="#FF6D4C00"/>
               <Button Content="Restart Event Core" Command="{Binding InjectRestartEventCoreCommand}" Background="#FF6D4C00"/>
-              <Button Content="Restart Monitor" Command="{Binding InjectRestartMonitorCommand}" Background="#FF6D4C00"/>
+              <Button Content="Restart Monitoru" Command="{Binding InjectRestartMonitorCommand}" Background="#FF6D4C00"/>
             </StackPanel>
 
-            <TextBlock Text="Qualification Reports" FontSize="16" FontWeight="SemiBold"/>
-            <Button Content="RUN QUALIFICATION" Command="{Binding RunQualificationCommand}" Background="#FF3A5A8C" HorizontalAlignment="Left" Margin="0,4,0,8"/>
+            <TextBlock Text="Kvalifikace" FontSize="16" FontWeight="SemiBold"/>
+            <Button Content="SPUSTIT KVALIFIKACI" Command="{Binding RunQualificationCommand}" Background="#FF3A5A8C" HorizontalAlignment="Left" Margin="0,4,0,8"/>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4">
-              <TextBlock Text="{Binding QualificationResult}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding QualificationResult}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" Foreground="#FFDDE1E7"/>
             </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
 
-      <!-- LOGS -->
-      <TabItem Header="Logs" DataContext="{Binding Logs}">
+      <TabItem Header="Logy" DataContext="{Binding Logs}">
         <Grid Margin="16">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
             <ComboBox Width="180" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" DisplayMemberPath="Name"/>
-            <TextBox Width="200" Margin="12,0,0,0" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
-                     Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-            <CheckBox Content="Errors only" IsChecked="{Binding ErrorsOnly}" Foreground="#FFDDE1E7" Margin="12,0,0,0" VerticalAlignment="Center"/>
-            <CheckBox Content="Live tail" IsChecked="{Binding LiveTail}" Foreground="#FFDDE1E7" Margin="12,0,0,0" VerticalAlignment="Center"/>
-            <Button Content="Clear view" Command="{Binding ClearViewCommand}" Margin="12,0,0,0"/>
-            <Button Content="Open folder" Command="{Binding OpenFolderCommand}"/>
+            <TextBox Width="200" Margin="12,0,0,0" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"/>
+            <CheckBox Content="Jen chyby" IsChecked="{Binding ErrorsOnly}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            <CheckBox Content="Živý ocas" IsChecked="{Binding LiveTail}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            <Button Content="Vymazat pohled" Command="{Binding ClearViewCommand}" Margin="12,0,0,0"/>
+            <Button Content="Otevřít složku" Command="{Binding OpenFolderCommand}"/>
           </StackPanel>
           <TextBox Grid.Row="1" Text="{Binding VisibleText, Mode=OneWay}" IsReadOnly="True"
-                   FontFamily="Consolas" FontSize="12" Background="#FF14161A" Foreground="#FFC9D1D9"
+                   FontFamily="Consolas" FontSize="12" Background="#FF14161A" Foreground="#FFDDE1E7"
                    BorderThickness="0" VerticalScrollBarVisibility="Auto" TextChanged="LogBox_TextChanged"/>
         </Grid>
       </TabItem>
 
-      <!-- SYSTEM / SETTINGS -->
-      <TabItem Header="System" DataContext="{Binding Settings}">
+      <TabItem Header="Systém" DataContext="{Binding Settings}">
         <StackPanel Margin="16" MaxWidth="720" HorizontalAlignment="Left">
           <TextBlock Text="Globální cesty" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-          <TextBlock Text="Platform / Monitor / Detector roots"/>
-          <TextBox Text="{Binding PlatformRoot}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-          <TextBox Text="{Binding MonitorRoot}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-          <TextBox Text="{Binding DetectorRoot}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-          <TextBlock Text="LAN host / production stream"/>
-          <TextBox Text="{Binding LanHost}" Margin="0,2,0,6" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
-          <TextBox Text="{Binding ProductionStream}" Margin="0,2,0,8" Background="#FF2C313A" Foreground="#FFDDE1E7"/>
+          <TextBlock Text="Kořeny: platforma / monitor / detektor" Foreground="{StaticResource FgMuted}"/>
+          <TextBox Text="{Binding PlatformRoot}" Margin="0,2,0,6"/>
+          <TextBox Text="{Binding MonitorRoot}" Margin="0,2,0,6"/>
+          <TextBox Text="{Binding DetectorRoot}" Margin="0,2,0,6"/>
+          <TextBlock Text="LAN host / produkční stream" Foreground="{StaticResource FgMuted}"/>
+          <TextBox Text="{Binding LanHost}" Margin="0,2,0,6"/>
+          <TextBox Text="{Binding ProductionStream}" Margin="0,2,0,8"/>
           <Button Content="Uložit" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Padding="18,6"/>
           <TextBlock Text="{Binding SaveResult}" Margin="0,8,0,0" Foreground="#FF7FB2E5"/>
-          <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" Foreground="#FF9AA3AF"
-                     Text="Lokální runtime config (gitignored): runtime/config/cameras.json, streams.json, detectors.json, roi/, scenarios.json, notifications.json, hardware.json"/>
+          <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}"
+                     Text="Lokální runtime config (mimo Git): runtime/config/cameras.json, streams.json, detectors.json, roi/, scenarios.json, notifications.json"/>
         </StackPanel>
       </TabItem>
     </TabControl>
