@@ -10,22 +10,34 @@ public static class StreamFrameGrabber
 {
     public sealed record Result(bool Ok, byte[]? JpegBytes, int WidthHint, int HeightHint, string Message);
 
-    public static async Task<Result> GrabJpegAsync(
+    public static Task<Result> GrabJpegAsync(
         string mediaMtxPath,
         string? rtspBase = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(mediaMtxPath))
-            return new Result(false, null, 0, 0, "Chybí MediaMTX path.");
+            return Task.FromResult(new Result(false, null, 0, 0, "Chybí MediaMTX path."));
+
+        var baseUrl = (rtspBase ?? "rtsp://127.0.0.1:8554").TrimEnd('/');
+        var url = $"{baseUrl}/{mediaMtxPath.TrimStart('/')}";
+        return GrabJpegFromUrlAsync(url, ct);
+    }
+
+    /// <summary>
+    /// Grabs one JPEG from any RTSP URL. Callers must never log the URL if it contains credentials.
+    /// </summary>
+    public static async Task<Result> GrabJpegFromUrlAsync(string rtspUrl, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(rtspUrl))
+            return new Result(false, null, 0, 0, "Chybí RTSP URL.");
 
         var ffmpeg = FindFfmpeg();
         if (ffmpeg is null)
             return new Result(false, null, 0, 0,
                 "ffmpeg nenalezen v PATH. Nainstaluj ffmpeg, nebo otevři Náhled streamu v prohlížeči.");
 
-        var baseUrl = (rtspBase ?? "rtsp://127.0.0.1:8554").TrimEnd('/');
-        var url = $"{baseUrl}/{mediaMtxPath.TrimStart('/')}";
         var tmp = Path.Combine(Path.GetTempPath(), $"cg-roi-{Guid.NewGuid():N}.jpg");
+        var safeHint = LogRedactor.Redact(rtspUrl);
 
         try
         {
@@ -33,7 +45,7 @@ public static class StreamFrameGrabber
             var args =
                 $"-hide_banner -loglevel error -y " +
                 $"-rtsp_transport tcp -timeout 8000000 " +
-                $"-i \"{url}\" -frames:v 1 -q:v 3 \"{tmp}\"";
+                $"-i \"{rtspUrl}\" -frames:v 1 -q:v 3 \"{tmp}\"";
 
             var psi = new ProcessStartInfo
             {
@@ -60,19 +72,21 @@ public static class StreamFrameGrabber
             {
                 try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { /* ignore */ }
                 return new Result(false, null, 0, 0,
-                    $"Timeout při grabu snímku z {url}. Běží MediaMTX a je path ready?");
+                    $"Timeout při grabu snímku ({safeHint}). Běží MediaMTX / RTSP?");
             }
 
             var err = await errTask.ConfigureAwait(false);
             if (proc.ExitCode != 0 || !File.Exists(tmp) || new FileInfo(tmp).Length < 100)
             {
-                var hint = string.IsNullOrWhiteSpace(err) ? $"exit={proc.ExitCode}" : Truncate(err, 240);
+                var hint = string.IsNullOrWhiteSpace(err)
+                    ? $"exit={proc.ExitCode}"
+                    : Truncate(LogRedactor.Redact(err), 240);
                 return new Result(false, null, 0, 0,
-                    $"Snímek z {url} se nepodařil ({hint}). Zkontroluj MediaMTX / stream.");
+                    $"Snímek se nepodařil ({hint}). Zdroj: {safeHint}");
             }
 
             var bytes = await File.ReadAllBytesAsync(tmp, ct).ConfigureAwait(false);
-            return new Result(true, bytes, 0, 0, $"OK {bytes.Length} B z {url}");
+            return new Result(true, bytes, 0, 0, $"OK {bytes.Length} B");
         }
         catch (Exception ex)
         {
