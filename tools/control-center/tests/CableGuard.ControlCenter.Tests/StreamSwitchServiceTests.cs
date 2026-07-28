@@ -12,6 +12,9 @@ internal sealed class FakeMediaMtxApi : IMediaMtxApi
     /// <summary>Path+source combinations that never become ready (simulates a source dying on a specific path).</summary>
     public HashSet<(string Path, string Source)> DeadCombos { get; } = new();
     public List<(string Path, string Source)> PatchCalls { get; } = new();
+    public List<(string Path, string Source)> AddCalls { get; } = new();
+    public List<string> DeleteCalls { get; } = new();
+    public bool FailNextAdd { get; set; }
 
     public Task<bool?> IsPathReadyAsync(string pathName, CancellationToken ct = default)
     {
@@ -23,6 +26,9 @@ internal sealed class FakeMediaMtxApi : IMediaMtxApi
     public Task<string?> GetConfiguredSourceAsync(string pathName, CancellationToken ct = default) =>
         Task.FromResult(Sources.TryGetValue(pathName, out var s) ? s : null);
 
+    public Task<bool?> ConfigPathExistsAsync(string pathName, CancellationToken ct = default) =>
+        Task.FromResult<bool?>(Sources.ContainsKey(pathName));
+
     public Task<bool> PatchPathSourceAsync(string pathName, string source, CancellationToken ct = default)
     {
         PatchCalls.Add((pathName, source));
@@ -30,16 +36,54 @@ internal sealed class FakeMediaMtxApi : IMediaMtxApi
         ReadyPaths.Add(pathName);
         return Task.FromResult(true);
     }
+
+    public Task<bool> AddPathAsync(string pathName, string source, string? rtspTransport = "tcp", CancellationToken ct = default)
+    {
+        AddCalls.Add((pathName, source));
+        if (FailNextAdd) { FailNextAdd = false; return Task.FromResult(false); }
+        if (Sources.ContainsKey(pathName)) return Task.FromResult(false);
+        Sources[pathName] = source;
+        ReadyPaths.Add(pathName);
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> DeletePathAsync(string pathName, CancellationToken ct = default)
+    {
+        DeleteCalls.Add(pathName);
+        Sources.Remove(pathName);
+        ReadyPaths.Remove(pathName);
+        return Task.FromResult(true);
+    }
 }
 
 internal sealed class FakePersister : IMediaMtxConfigPersister
 {
     public List<(string Path, string Source)> Persisted { get; } = new();
+    public List<string> Upserted { get; } = new();
+    public List<string> Removed { get; } = new();
+    public bool FailPersist { get; set; }
 
     public bool PersistPathSource(string pathName, string newSource, out string message)
     {
+        if (FailPersist) { message = "persist failed"; return false; }
         Persisted.Add((pathName, newSource));
         message = "persisted";
+        return true;
+    }
+
+    public bool UpsertPath(string pathName, string source, string? rtspTransport, out string message)
+    {
+        if (FailPersist) { message = "upsert failed"; return false; }
+        Upserted.Add(pathName);
+        Persisted.Add((pathName, source));
+        message = "upserted";
+        return true;
+    }
+
+    public bool RemovePath(string pathName, out string message)
+    {
+        Removed.Add(pathName);
+        message = "removed";
         return true;
     }
 }

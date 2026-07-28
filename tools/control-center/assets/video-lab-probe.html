@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>CableGuard Video Lab — WHEP Probe</title>
+  <style>
+    body { font-family: Consolas, monospace; background:#111; color:#ddd; margin:16px; }
+    video { width: 960px; max-width: 100%; background:#000; }
+    #stats { white-space: pre-wrap; margin-top: 12px; }
+    button { margin: 8px 8px 0 0; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+  <h1>Video Lab WHEP Probe</h1>
+  <p>Save <code>probe-stats.json</code> into <code>cableguard-platform/runtime/video-lab/</code>. Control Center polls that file. Never sends credentials.</p>
+  <video id="v" autoplay playsinline muted></video>
+  <div>
+    <button id="dl" type="button">Download probe-stats.json</button>
+  </div>
+  <div id="stats">connecting…</div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const path = params.get('path') || 'zahradky-horni-stanice';
+    const whep = `http://127.0.0.1:8889/${path}/whep`;
+    const video = document.getElementById('v');
+    const statsEl = document.getElementById('stats');
+    let pc, lastFrames = 0, lastTs = performance.now(), freezeCount = 0, lastFrameAt = performance.now();
+    let lastPayload = null;
+
+    async function start() {
+      pc = new RTCPeerConnection();
+      pc.addTransceiver('video', { direction: 'recvonly' });
+      pc.ontrack = (e) => { video.srcObject = e.streams[0]; };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      const res = await fetch(whep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp' },
+        body: offer.sdp
+      });
+      if (res.status !== 201) throw new Error('WHEP POST ' + res.status);
+      const answer = await res.text();
+      await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+      setInterval(sample, 1000);
+    }
+
+    async function sample() {
+      if (!pc) return;
+      const report = await pc.getStats();
+      let framesReceived=0, framesDecoded=0, framesDropped=0, jitter=0, rtt=0, width=0, height=0, packetsLost=0, packetsReceived=0;
+      report.forEach(r => {
+        if (r.type === 'inbound-rtp' && r.kind === 'video') {
+          framesReceived = r.framesReceived || 0;
+          framesDecoded = r.framesDecoded || 0;
+          framesDropped = r.framesDropped || 0;
+          jitter = (r.jitter || 0) * 1000;
+          packetsLost = r.packetsLost || 0;
+          packetsReceived = r.packetsReceived || 0;
+          width = r.frameWidth || width;
+          height = r.frameHeight || height;
+        }
+        if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.currentRoundTripTime != null) {
+          rtt = r.currentRoundTripTime * 1000;
+        }
+      });
+      const now = performance.now();
+      const dt = (now - lastTs) / 1000;
+      const fps = dt > 0 ? (framesReceived - lastFrames) / dt : 0;
+      if (framesReceived > lastFrames) lastFrameAt = now;
+      else if ((now - lastFrameAt) > 2000) freezeCount++;
+      lastFrames = framesReceived; lastTs = now;
+      const loss = (packetsLost + packetsReceived) > 0 ? (100 * packetsLost / (packetsLost + packetsReceived)) : 0;
+      lastPayload = {
+        streamId: path,
+        iceState: pc.iceConnectionState,
+        fps: fps,
+        framesReceived, framesDecoded, framesDropped,
+        packetLoss: loss, jitterMs: jitter, rttMs: rtt,
+        bitrateKbps: null, width, height,
+        secondsSinceLastFrame: (now - lastFrameAt) / 1000,
+        freezeCount, reconnectCount: 0
+      };
+      statsEl.textContent = JSON.stringify(lastPayload, null, 2);
+    }
+
+    document.getElementById('dl').onclick = () => {
+      if (!lastPayload) return;
+      const blob = new Blob([JSON.stringify(lastPayload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'probe-stats.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+    start().catch(e => { statsEl.textContent = String(e); });
+  </script>
+</body>
+</html>

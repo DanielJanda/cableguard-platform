@@ -20,7 +20,8 @@ Toto není wishlist — fáze vycházejí ze skutečného stavu (viz CURRENT_STA
 | 1 – Internal realtime video | **DONE** | Kamera → MediaMTX → WHEP → LAN monitor na 10.6.1.40, acceptance z druhého PC |
 | 2 – Camera evaluation | **CURRENT** | Porovnání kamer 10.2.4.92 vs 10.2.4.90, výběr streamu pro detekci |
 | 2.5 – Local Admin Control Center MVP | **DONE** | Lokální admin GUI MVP mergnuto (PR #21) |
-| 2.6 – Admin Studio / Test Lab | **CURRENT** | OPERATIONS\|TEST LAB: cameras CRUD, streams, detectors, ROI, notifications, hardware test, scenarios |
+| 2.6 – Admin Studio / Test Lab | **DONE** (PR #22) | OPERATIONS\|TEST LAB: cameras, streams, detectors, ROI, notifications, hardware, scenarios |
+| 2.6b – Video Qualification Lab | **CURRENT** | Video Lab: transport metrics, manual G2G, soak, qualification (≠ estimated latency) |
 | 3 – Detector media input | **NEXT** | Detektor trvale čte vybranou MediaMTX path, video-level parita |
 | 4 – Live fall event integration | PLANNED | Reálný pád → Event Core → alarm v monitoru (EventCorePublisher, heartbeat, outbox) |
 | 5 – Production runtime simplification | PLANNED | React build + statický hosting, BFF server-side, konec Vite dev serveru v provozu |
@@ -86,11 +87,21 @@ STATUS: **NEXT** — může běžet paralelně s Phase 3 (nezávislé pracovní 
 
 # Phase 2.6 – Admin Studio / Test Lab
 
-STATUS: **CURRENT** — rozšíření Control Center MVP
+STATUS: **DONE** (platform PR #22)
 
 - **Objective:** Odstranit nutnost ručních úprav Python/YAML/PowerShell při běžném vývoji a testování (kamery v kanceláři, detector profily, ROI, Telegram, hardware test).
 - **Work:** Dual mode OPERATIONS|TEST LAB; tabs Scenarios/Cameras/Streams/Detectors/Calibration/Notifications/Hardware; gitignored `runtime/config/*`; detector launch přes MediaMTX logical streams; ROI profily; hardware TEST MODE guardrails (bez auto vazby detector→relay).
 - **Out of scope:** editace ANGLE/TORSO/MOV/AXIS/weights/risk threshold; auto safety I/O (Phase 7); embedded WebRTC inference player (MVP = OpenCV debug overlay).
+- **Estimated complexity:** **L**
+
+# Phase 2.6b – Video Qualification Lab
+
+STATUS: **CURRENT** (issue #23, branch `feature/video-qualification-lab`)
+
+- **Objective:** Objektivně měřit realtime vlastnosti video pipeline a odhalit „LIVE, ale zpožděný obraz“.
+- **Work:** Admin Studio tab Video Lab — Live Metrics, Camera Profiles, Manual Latency Test, Detector Freshness (schema/NOT AVAILABLE), Soak, Failure injection, Qualification reports, config fingerprint; MediaMTX metrics jen `127.0.0.1:9998`.
+- **Hard rules:** WebRTC metrics ≠ G2G; detector frame age ≠ capture age; LIVE ≠ REALTIME; bez fyzického latency testu vždy `GLASS-TO-GLASS LATENCY: NOT MEASURED`; žádná změna fall algorithm / frame pipeline.
+- **Acceptance criteria:** Unit testy health/G2G/qualification/soak/fingerprint zelené; GUI odděluje TRANSPORT / G2G / DETECTOR; qualification bez G2G → INCOMPLETE; automated latency zůstane EXPERIMENTAL.
 - **Estimated complexity:** **L**
 
 # Phase 3 – Detector media input

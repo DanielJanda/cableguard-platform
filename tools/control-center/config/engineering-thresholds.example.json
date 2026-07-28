@@ -1,0 +1,12 @@
+# engineering-thresholds.example.json
+# ENGINEERING / PROVISIONAL — not safety certified.
+# Copy to runtime/config/video-lab/engineering-thresholds.json if needed.
+{
+  "label": "ENGINEERING / PROVISIONAL — not safety certified",
+  "minReceivedFps": 12,
+  "maxSecondsSinceLastFrame": 2.0,
+  "maxFreezeCountPerHour": 5,
+  "maxReconnectsPerHour": 3,
+  "requireGlassToGlassForPass": true,
+  "maxGlassToGlassMs": 1500
+}

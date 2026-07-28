@@ -28,8 +28,8 @@ public sealed class AdminModeViewModel : ObservableObject
     public bool IsOperations => Mode == AdminMode.Operations;
     public bool IsTestLab => Mode == AdminMode.TestLab;
     public string ModeBanner => IsTestLab
-        ? "⚠ TEST MODE – změny mohou ovlivnit běžící systém"
-        : "OPERATIONS – bezpečný provozní režim";
+        ? "⚠ TESTOVACÍ REŽIM – změny mohou ovlivnit běžící systém"
+        : "PROVOZ – běžná správa služeb";
     public Brush ModeBannerBrush => IsTestLab
         ? new SolidColorBrush(Color.FromRgb(0x8B, 0x5A, 0x00))
         : new SolidColorBrush(Color.FromRgb(0x1E, 0x3A, 0x2F));
@@ -43,8 +43,8 @@ public sealed class AdminModeViewModel : ObservableObject
         TestLabCommand = new RelayCommand(() =>
         {
             if (MessageBox.Show(
-                    "Vstoupit do TEST LAB?\n\nZměny kamer, streamů, detectorů, ROI a hardware mohou ovlivnit běžící systém.",
-                    "TEST LAB", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                    "Vstoupit do testovacího režimu?\n\nZměny kamer, streamů, detektorů, ROI a hardwaru mohou ovlivnit běžící systém.",
+                    "Testovací laboratoř", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 Mode = AdminMode.TestLab;
         });
     }
@@ -140,7 +140,7 @@ public sealed class StreamsViewModel : ObservableObject
     public async Task RefreshReadyAsync(LogicalStream s, Action<string> setStatus)
     {
         var ready = await _api.IsPathReadyAsync(s.MediaMtxPath);
-        setStatus(ready switch { true => "LIVE", false => "OFFLINE", null => "API?" });
+        setStatus(ready switch { true => "ŽIVĚ", false => "OFFLINE", null => "API?" });
     }
 }
 
@@ -155,8 +155,8 @@ public sealed class StreamRowViewModel : ObservableObject
         ApplyCommand = new AsyncRelayCommand(() => _parent.ApplyMappingAsync(Stream, Stream.CameraId));
     }
     public LogicalStream Stream { get; }
-    public string Title => Stream.IsProduction ? $"{Stream.DisplayName} ★ PRODUCTION" : Stream.DisplayName;
-    public string Subtitle => $"path: {Stream.MediaMtxPath}  →  camera: {Stream.CameraId}";
+    public string Title => Stream.IsProduction ? $"{Stream.DisplayName} ★ PRODUKCE" : Stream.DisplayName;
+    public string Subtitle => $"cesta: {Stream.MediaMtxPath}  →  kamera: {Stream.CameraId}";
     public string Live { get => _live; private set => SetField(ref _live, value); }
     public RelayCommand PreviewCommand { get; }
     public AsyncRelayCommand ApplyCommand { get; }
@@ -244,7 +244,7 @@ public sealed class DetectorsViewModel : ObservableObject
     {
         var (ok, msg) = await _manager.StartAsync(instance, _notifications(), debug);
         _logger.Info($"[DETECTOR] Start {instance.Id}: {msg}");
-        if (!ok) MessageBox.Show(msg, "Detector start", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!ok) MessageBox.Show(msg, "Start detektoru", MessageBoxButton.OK, MessageBoxImage.Warning);
         if (reload) await ReloadAsync();
         else Items.FirstOrDefault(r => r.Instance.Id == instance.Id)?.Refresh();
     }
@@ -253,18 +253,48 @@ public sealed class DetectorsViewModel : ObservableObject
     {
         var (ok, msg) = _manager.Stop(instance);
         _logger.Info($"[DETECTOR] Stop {instance.Id}: {msg}");
-        if (!ok) MessageBox.Show(msg, "Detector stop", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!ok) MessageBox.Show(msg, "Stop detektoru", MessageBoxButton.OK, MessageBoxImage.Warning);
         if (reload) return ReloadAsync();
         Items.FirstOrDefault(r => r.Instance.Id == instance.Id)?.Refresh();
         return Task.CompletedTask;
     }
 
-    public void OpenDebug(DetectorInstance instance) => _ = StartAsync(instance, debug: true);
+    /// <summary>Stop if needed, then start with OpenCV debug overlay window (náhled detekce).</summary>
+    public async Task OpenDebugAsync(DetectorInstance instance)
+    {
+        if (_manager.FindPid(instance) is not null)
+        {
+            _logger.Info($"[DETECTOR] Restarting {instance.Id} with debug overlay window");
+            await StopAsync(instance, reload: false);
+            await Task.Delay(1200);
+        }
+        var (ok, msg) = await _manager.StartAsync(instance, _notifications(), forceDebug: true);
+        _logger.Info($"[DETECTOR] Debug start {instance.Id}: {msg}");
+        Items.FirstOrDefault(r => r.Instance.Id == instance.Id)?.Refresh();
+        if (!ok)
+        {
+            MessageBox.Show(msg, "Náhled detekce", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        MessageBox.Show(
+            "Detektor běží s náhledem.\n\n" +
+            "Mělo se otevřít okno OpenCV:\n„Zahradky horni pad [debug overlay]“\n\n" +
+            "Pokud ho nevidíte, podívejte se na hlavní panel Windows — často je za Admin Studio.\n\n" +
+            "Poznámka: Monitor/kiosk ukazují čisté video bez AI překryvu.",
+            "Náhled detekce", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    public void OpenDebug(DetectorInstance instance) => _ = OpenDebugAsync(instance);
 
     public void RefreshStatuses()
     {
         foreach (var row in Items.ToList()) row.Refresh();
     }
+
+    public DetectorInstance? PrimaryFallDetector =>
+        Items.Select(i => i.Instance)
+            .FirstOrDefault(i => i.DetectorType == "fall" && i.Enabled)
+        ?? Items.Select(i => i.Instance).FirstOrDefault(i => i.DetectorType == "fall");
 }
 
 public sealed class DetectorRowViewModel : ObservableObject
@@ -277,22 +307,22 @@ public sealed class DetectorRowViewModel : ObservableObject
         Instance = instance; _parent = parent; _manager = manager;
         StartCommand = new AsyncRelayCommand(() => _parent.StartAsync(Instance, Instance.DebugOverlay));
         StopCommand = new AsyncRelayCommand(() => _parent.StopAsync(Instance));
-        DebugCommand = new RelayCommand(() => _parent.OpenDebug(Instance));
+        DebugCommand = new AsyncRelayCommand(() => _parent.OpenDebugAsync(Instance));
     }
     public DetectorInstance Instance { get; }
     public string Title => Instance.DisplayName;
     public string Subtitle =>
-        $"{Instance.DetectorType.ToUpperInvariant()}  stream={Instance.InputStream}  model={Instance.Model}  ROI={Instance.RoiProfile}  device={Instance.Device}";
+        $"{(Instance.DetectorType == "fall" ? "pád" : "bariéra")} · stream {Instance.InputStream} · model {Instance.Model} · ROI {Instance.RoiProfile}";
     public string Status { get => _status; private set => SetField(ref _status, value); }
     public AsyncRelayCommand StartCommand { get; }
     public AsyncRelayCommand StopCommand { get; }
-    public RelayCommand DebugCommand { get; }
+    public AsyncRelayCommand DebugCommand { get; }
     public void Refresh()
     {
-        if (!Instance.Enabled) { Status = "DISABLED"; Detail = ""; return; }
+        if (!Instance.Enabled) { Status = "VYPNUTO"; Detail = ""; return; }
         var pid = _manager.FindPid(Instance);
-        Status = pid is not null ? "RUNNING" : "STOPPED";
-        Detail = pid is not null ? $"PID {pid}" : "";
+        Status = pid is not null ? "BĚŽÍ" : "ZASTAVENO";
+        Detail = pid is not null ? $"PID {pid}" : "bez okna = START; s náhledem = Náhled videa";
     }
 
     private string _detail = "";

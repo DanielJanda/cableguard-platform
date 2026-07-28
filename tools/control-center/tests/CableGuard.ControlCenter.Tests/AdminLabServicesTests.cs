@@ -179,6 +179,6 @@ public class AdminLabServicesTests
     public void FallAlgorithmInfo_IsReadOnlyNote()
     {
         Assert.Contains("golden-master", FallAlgorithmInfo.Note);
-        Assert.Contains("never via Admin GUI", FallAlgorithmInfo.Note);
+        Assert.Contains("nikdy přes Admin GUI", FallAlgorithmInfo.Note);
     }
 }

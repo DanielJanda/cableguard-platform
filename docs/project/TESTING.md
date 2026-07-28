@@ -79,6 +79,24 @@ node .\scripts\compare_cameras_benchmark.mjs    # WHEP přes Playwright/Edge
 
 Poslední běh (2026-07-22): obě kamery stabilní 20 minut, 0 reconnectů.
 
+### Control Center / Video Lab (unit)
+
+```powershell
+cd C:\Users\mega\Documents\cableguard-platform\tools\control-center
+dotnet test --nologo
+```
+
+**Výsledek 2026-07-27: `63 passed`** (zahrnuje Video Lab: health ≠ ICE-only REALTIME, G2G NOT MEASURED, qualification incomplete, soak p50/p95/p99, fingerprint secret exclusion, MediaMTX metrics parse, detector freshness NOT AVAILABLE).
+
+Manuálně ve Video Lab:
+
+1. Open WHEP Probe → ověřit measured FPS/ICE v Live Metrics.
+2. Open latency pattern → Record Manual Latency → G2G přestane být NOT MEASURED.
+3. RUN QUALIFICATION bez G2G → INCOMPLETE; s G2G → ENGINEERING PASS/FAIL.
+4. Failure injection vyžaduje potvrzení (TEST MODE).
+
+**Nikdy:** odhadovat G2G z RTT/FPS; považovat LIVE za REALTIME; považovat detector queue age za camera capture age.
+
 ### Second-PC LAN acceptance (manuální)
 
 Checklist v OPERATIONS.md („Test z druhého PC“). **Naposledy potvrzeno uživatelem 2026-07-22**: dashboard, kiosk, LIVE 1280×720, alarm, acknowledge, restart MediaMTX → OFFLINE → automatický LIVE.

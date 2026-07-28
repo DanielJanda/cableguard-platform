@@ -56,13 +56,13 @@ public sealed class ServiceRowViewModel : ObservableObject
 
     private static string StatusLabel(ComponentStatus status) => status switch
     {
-        ComponentStatus.Running => "RUNNING",
-        ComponentStatus.Stopped => "STOPPED",
-        ComponentStatus.Starting => "STARTING",
-        ComponentStatus.Degraded => "DEGRADED",
-        ComponentStatus.Fault => "FAULT",
-        ComponentStatus.NotConfigured => "NOT CONFIGURED",
-        _ => "UNKNOWN",
+        ComponentStatus.Running => "BĚŽÍ",
+        ComponentStatus.Stopped => "ZASTAVENO",
+        ComponentStatus.Starting => "STARTUJE",
+        ComponentStatus.Degraded => "ZHORŠENO",
+        ComponentStatus.Fault => "PORUCHA",
+        ComponentStatus.NotConfigured => "NENÍ NASTAVENO",
+        _ => "NEZNÁMO",
     };
 
     private async Task StartAsync()

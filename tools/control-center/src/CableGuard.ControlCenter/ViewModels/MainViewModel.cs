@@ -29,6 +29,7 @@ public sealed class MainViewModel : ObservableObject
         NotificationsViewModel notifications,
         HardwareViewModel hardware,
         ScenariosViewModel scenarios,
+        VideoLabViewModel videoLab,
         LogsViewModel logs,
         SettingsViewModel settings)
     {
@@ -42,6 +43,7 @@ public sealed class MainViewModel : ObservableObject
         Notifications = notifications;
         Hardware = hardware;
         Scenarios = scenarios;
+        VideoLab = videoLab;
         Logs = logs;
         Settings = settings;
 
@@ -55,11 +57,22 @@ public sealed class MainViewModel : ObservableObject
         OpenKioskCommand = new RelayCommand(() => OpenUrl(_config.KioskUrl));
         OpenTestLabCommand = new RelayCommand(() => Mode.TestLabCommand.Execute(null));
         RefreshCommand = new AsyncRelayCommand(RefreshAllAsync);
+        StartDetectorPreviewCommand = new AsyncRelayCommand(StartDetectorPreviewAsync);
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-        _refreshTimer.Tick += async (_, _) => { if (!_busy) await RefreshAllAsync(); };
+        _refreshTimer.Tick += (_, _) =>
+        {
+            if (_busy) return;
+            _ = RefreshAllSafeAsync();
+        };
         _refreshTimer.Start();
-        _ = RefreshAllAsync();
+        _ = RefreshAllSafeAsync();
+    }
+
+    private async Task RefreshAllSafeAsync()
+    {
+        try { await RefreshAllAsync(); }
+        catch (Exception ex) { _logger.Warn($"Refresh failed: {ex.Message}"); }
     }
 
     public AdminModeViewModel Mode { get; }
@@ -71,6 +84,7 @@ public sealed class MainViewModel : ObservableObject
     public NotificationsViewModel Notifications { get; }
     public HardwareViewModel Hardware { get; }
     public ScenariosViewModel Scenarios { get; }
+    public VideoLabViewModel VideoLab { get; }
     public LogsViewModel Logs { get; }
     public SettingsViewModel Settings { get; }
 
@@ -83,6 +97,7 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand OpenKioskCommand { get; }
     public RelayCommand OpenTestLabCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
+    public AsyncRelayCommand StartDetectorPreviewCommand { get; }
 
     public async Task RefreshAllAsync()
     {
@@ -96,10 +111,10 @@ public sealed class MainViewModel : ObservableObject
         var snapshots = Services.Select(s => s.LastSnapshot).Where(s => s is not null).Cast<ComponentSnapshot>().ToList();
         SystemStatus = snapshots.Count == 0 ? "…" : SystemStatusCalculator.Calculate(snapshots) switch
         {
-            Core.Models.SystemStatus.Ready => "READY",
-            Core.Models.SystemStatus.Degraded => "DEGRADED",
-            Core.Models.SystemStatus.Stopped => "STOPPED",
-            _ => "FAULT",
+            Core.Models.SystemStatus.Ready => "PŘIPRAVENO",
+            Core.Models.SystemStatus.Degraded => "ZHORŠENO",
+            Core.Models.SystemStatus.Stopped => "ZASTAVENO",
+            _ => "PORUCHA",
         };
         return Task.CompletedTask;
     }
@@ -138,6 +153,20 @@ public sealed class MainViewModel : ObservableObject
             }
         }
         finally { _busy = false; await RefreshAllAsync(); }
+    }
+
+    private async Task StartDetectorPreviewAsync()
+    {
+        var fall = Detectors.PrimaryFallDetector;
+        if (fall is null)
+        {
+            MessageBox.Show(
+                "Není nakonfigurován fall detektor.\nZáložka Detektory → zkontrolujte detectors.json.",
+                "Náhled detekce", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        await Detectors.OpenDebugAsync(fall);
+        await RefreshAllAsync();
     }
 
     private static void OpenUrl(string url) =>

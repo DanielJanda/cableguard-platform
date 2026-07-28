@@ -28,6 +28,7 @@ public partial class CameraEditDialog : Window
         CameraId = c.CameraId, DisplayName = c.DisplayName, SiteId = c.SiteId, StationId = c.StationId,
         Host = c.Host, RtspPort = c.RtspPort, Profile = c.Profile, Transport = c.Transport,
         Enabled = c.Enabled, CredentialRef = c.CredentialRef, MediaMtxPath = c.MediaMtxPath,
+        RuntimeState = c.RuntimeState, LastApplyMessage = c.LastApplyMessage,
     };
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -49,7 +50,9 @@ public partial class CameraEditDialog : Window
             CredentialRef = CredBox.Text.Trim(),
             SiteId = SiteBox.Text.Trim(),
             StationId = StationBox.Text.Trim(),
-            Enabled = true,
+            Enabled = Result.Enabled,
+            RuntimeState = Result.RuntimeState,
+            LastApplyMessage = Result.LastApplyMessage,
         };
         DialogResult = true;
     }

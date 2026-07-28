@@ -106,8 +106,15 @@ Kritické zhodnocení. Fakt z 2026-07-27: po auditu žádná služba neběžela 
 
 - **Impact:** Plný video acceptance nejde automatizovat (headless ICE/dekódování nespolehlivé, Playwright testy občas visí) → regrese videa se pozná až manuálně.
 - **Likelihood:** Trvalé omezení nástrojů.
-- **Current mitigation:** Handshake-level testy (OPTIONS/POST/PATCH) automatizované; benchmark přes MediaMTX API bez prohlížeče; manuální vizuální checklist.
+- **Current mitigation:** Handshake-level testy (OPTIONS/POST/PATCH) automatizované; benchmark přes MediaMTX API bez prohlížeče; manuální vizuální checklist; Video Lab Manual Latency Test + soak.
 - **Recommended action:** Akceptovat; držet handshake testy + krátký manuální checklist po každém merge dotýkajícím se videa.
+
+### M7 — LIVE status ≠ skutečný realtime obraz
+
+- **Impact:** Operátor/monitor může vidět LIVE (ICE connected), zatímco stream je frozen/stale nebo detector zpracovává backlog starších framů. Odhad G2G z FPS/RTT/jitteru by falešně uklidňoval.
+- **Likelihood:** Střední při degradaci sítě/GPU/MediaMTX.
+- **Current mitigation:** Video Qualification Lab odděluje TRANSPORT / G2G / DETECTOR FRESHNESS; G2G jen z fyzického Latency Testu; health model REALTIME vyžaduje pokračující frames (ICE samo nestačí).
+- **Recommended action:** Držet pravidla v VIDEO_PIPELINE.md; detector diagnostics contract (monotonic timestamps) jako samostatný detector PR; žádná změna latest-frame policy bez golden-master + video parity.
 
 ## LOW
 

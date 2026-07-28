@@ -46,7 +46,15 @@ public sealed class RoiProfile
     [JsonPropertyName("display_name")] public string DisplayName { get; set; } = "";
     [JsonPropertyName("stream_id")] public string StreamId { get; set; } = "";
     [JsonPropertyName("detector_type")] public string DetectorType { get; set; } = "fall";
+    /// <summary>fall: single polygon. barrier: person | safety_bar | exclude (matches zahradky_safety app.py).</summary>
+    [JsonPropertyName("roi_role")] public string RoiRole { get; set; } = "fall";
     [JsonPropertyName("points")] public List<RoiPoint> Points { get; set; } = new();
+    /// <summary>Pixel width of the snapshot used when drawing points.</summary>
+    [JsonPropertyName("source_width")] public int SourceWidth { get; set; }
+    /// <summary>Pixel height of the snapshot used when drawing points.</summary>
+    [JsonPropertyName("source_height")] public int SourceHeight { get; set; }
+    /// <summary>Always "saved" for Admin Studio profiles — never claim ACTIVE until detector loads/restarts.</summary>
+    [JsonPropertyName("activation_state")] public string ActivationState { get; set; } = "saved";
     [JsonPropertyName("is_production")] public bool IsProduction { get; set; }
 }
 
@@ -77,6 +85,12 @@ public sealed class HardwareDocument
     [JsonPropertyName("relay_server_host")] public string RelayServerHost { get; set; } = "127.0.0.1";
     [JsonPropertyName("relay_server_port")] public int RelayServerPort { get; set; } = 9877;
     [JsonPropertyName("auto_off_seconds")] public int AutoOffSeconds { get; set; } = 2;
+    /// <summary>When empty, Green/Red/Buzzer buttons stay disabled. Channels are 1-based.</summary>
+    [JsonPropertyName("green_channel")] public int? GreenChannel { get; set; }
+    [JsonPropertyName("red_channel")] public int? RedChannel { get; set; }
+    [JsonPropertyName("buzzer_channel")] public int? BuzzerChannel { get; set; }
+    [JsonPropertyName("relay_count")] public int RelayCount { get; set; } = 8;
+    [JsonPropertyName("di_count")] public int DiCount { get; set; } = 8;
 }
 
 public sealed class ScenarioDocument
@@ -103,6 +117,6 @@ public sealed class ScenariosDocument
 public static class FallAlgorithmInfo
 {
     public const string Note =
-        "ANGLE / TORSO / MOV / AXIS / BOX / weights / risk threshold are frozen and protected by golden-master tests. " +
-        "Edit only via detector algorithm change + new version + tests — never via Admin GUI.";
+        "Parametry ANGLE / TORSO / MOV / AXIS / váhy / risk threshold jsou zamčené a chráněné golden-master testy. " +
+        "Měnit jen přes změnu algoritmu v detektoru + nová verze + testy — nikdy přes Admin GUI.";
 }

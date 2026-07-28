@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>CableGuard Manual Latency Pattern</title>
+  <style>
+    html, body { margin:0; height:100%; background:#000; color:#0f0; font-family: Consolas, monospace; overflow:hidden; }
+    #wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; }
+    #clock { font-size: 96px; font-weight: bold; letter-spacing: 2px; }
+    #seq { font-size: 64px; margin-top: 24px; }
+    #bar { margin-top: 40px; width: 90vw; height: 48px; background:#111; position:relative; }
+    #needle { position:absolute; top:0; bottom:0; width:8px; background:#ff0; }
+    #hint { position:fixed; bottom:16px; left:16px; color:#888; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="clock">00:00:00.000</div>
+    <div id="seq">SEQ 000000</div>
+    <div id="bar"><div id="needle"></div></div>
+  </div>
+  <div id="hint">Fullscreen (F11). Place this display in the camera view. Compare with received stream for MANUAL G2G measurement. Not OCR-authoritative.</div>
+  <script>
+    let seq = 0;
+    const clock = document.getElementById('clock');
+    const seqEl = document.getElementById('seq');
+    const needle = document.getElementById('needle');
+    function tick() {
+      const d = new Date();
+      const ms = String(d.getMilliseconds()).padStart(3,'0');
+      clock.textContent =
+        String(d.getHours()).padStart(2,'0') + ':' +
+        String(d.getMinutes()).padStart(2,'0') + ':' +
+        String(d.getSeconds()).padStart(2,'0') + '.' + ms;
+      seq = (seq + 1) % 1000000;
+      seqEl.textContent = 'SEQ ' + String(seq).padStart(6,'0');
+      needle.style.left = ((seq % 100) / 100 * 100) + '%';
+      requestAnimationFrame(tick);
+    }
+    tick();
+  </script>
+</body>
+</html>

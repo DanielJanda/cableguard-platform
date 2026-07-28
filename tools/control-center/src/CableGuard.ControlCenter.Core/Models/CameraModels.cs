@@ -20,6 +20,10 @@ public sealed class CameraEntry
     [JsonPropertyName("credential_ref")] public string CredentialRef { get; set; } = "";
     /// <summary>Optional dedicated MediaMTX path for this physical camera (e.g. comparison path).</summary>
     [JsonPropertyName("mediamtx_path")] public string MediaMtxPath { get; set; } = "";
+    /// <summary>configured_not_ready | ready | fault — never claim LIVE without MediaMTX READY.</summary>
+    [JsonPropertyName("runtime_state")] public string RuntimeState { get; set; } = "configured_not_ready";
+    /// <summary>Safe operator-facing last apply message (no credentials).</summary>
+    [JsonPropertyName("last_apply_message")] public string LastApplyMessage { get; set; } = "";
 }
 
 /// <summary>Legacy inline mapping kept for cameras.json v1 compatibility.</summary>

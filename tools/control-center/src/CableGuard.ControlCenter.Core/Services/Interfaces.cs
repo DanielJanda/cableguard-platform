@@ -17,6 +17,10 @@ public interface IProcessInspector
     bool IsPortListening(int port);
     /// <summary>Finds a process whose command line contains the hint (used for the detector).</summary>
     int? FindProcessByCommandLineHint(string hint);
+    /// <summary>Finds first alive process by ProcessName (e.g. "mediamtx"), ignoring extension.</summary>
+    int? FindProcessByName(string processName);
+    /// <summary>All alive PIDs matching ProcessName (used to refuse multiple MediaMTX instances).</summary>
+    IReadOnlyList<int> FindAllProcessIdsByName(string processName);
     /// <summary>Kills a process tree; verifies the process name matches the expectation first.</summary>
     bool KillProcessTree(int pid, string expectedNameFragment, out string message);
 }
@@ -44,12 +48,22 @@ public interface IMediaMtxApi
     Task<bool?> IsPathReadyAsync(string pathName, CancellationToken ct = default);
     Task<string?> GetConfiguredSourceAsync(string pathName, CancellationToken ct = default);
     Task<bool> PatchPathSourceAsync(string pathName, string source, CancellationToken ct = default);
+    /// <summary>GET /v3/config/paths/get/{name} — true when path conf exists.</summary>
+    Task<bool?> ConfigPathExistsAsync(string pathName, CancellationToken ct = default);
+    /// <summary>POST /v3/config/paths/add/{name} (MediaMTX v1.11+).</summary>
+    Task<bool> AddPathAsync(string pathName, string source, string? rtspTransport = "tcp", CancellationToken ct = default);
+    /// <summary>DELETE /v3/config/paths/delete/{name}.</summary>
+    Task<bool> DeletePathAsync(string pathName, CancellationToken ct = default);
 }
 
 public interface IMediaMtxConfigPersister
 {
     /// <summary>Persists a new source for a path in the gitignored local yml so restarts keep the switch.</summary>
     bool PersistPathSource(string pathName, string newSource, out string message);
+    /// <summary>Create or replace a full path block under paths:.</summary>
+    bool UpsertPath(string pathName, string source, string? rtspTransport, out string message);
+    /// <summary>Remove a path block from local yml.</summary>
+    bool RemovePath(string pathName, out string message);
 }
 
 public interface ICredentialStore

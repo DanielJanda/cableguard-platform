@@ -1,41 +1,36 @@
 # CableGuard Platform
 
-Event Core backend for CableGuard: REST API, WebSocket, SQLite history.
+Event Core (FastAPI) + provozní skripty + MediaMTX + **Admin Studio**.
 
-Detectors live in the separate repository `cableguard-detector`.  
-This project does **not** run YOLO, cameras, USB-4761, or MediaMTX.
+## Dokumentace — začni tady
 
-## Quick start (Windows)
+**[`DOKUMENTACE.md`](DOKUMENTACE.md)** — jediný vstupní bod pro celý CableGuard (všechna 3 repa).
+
+Kanonická sada: [`docs/project/README.md`](docs/project/README.md)
+
+## Admin Studio
+
+```powershell
+.\tools\control-center\publish\CableGuard.ControlCenter.exe
+```
+
+## Quick start Event Core
 
 ```powershell
 cd cableguard-platform
-py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-Copy-Item .env.example .env
-# REQUIRED: set unique CABLEGUARD_INGEST_API_KEY and CABLEGUARD_KIOSK_API_KEY in .env
-# Event Core refuses placeholder/default secrets at startup (see docs/operations.md)
-
+# nastav CABLEGUARD_INGEST_API_KEY a CABLEGUARD_KIOSK_API_KEY v .env
 cd backend
 alembic upgrade head
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-In another terminal:
+Celý interní stack: `.\scripts\start_internal_cableguard.ps1`
 
-```powershell
-.\scripts\start_backend.ps1   # or run uvicorn as above
-python scripts\simulate_system.py --scenario demo
-```
+## Role
 
-Docs: `docs/architecture.md`, `docs/api.md`, `docs/integration-with-ui.md` (ack proxy pattern for `cableguard-monitor`).
-
-## What this is / is not
-
-| Is | Is not |
+| Je | Není |
 |---|---|
-| Event Core + health + acknowledgements | Fall/safety-bar detection algorithms |
-| Local SQLite (WAL) | PostgreSQL / cloud DB |
-| Service API key for ingest | Full operator auth (planned before internet exposure) |
-| Kiosk API key on Event Core (via server-side proxy for UI ack) | Browser-held kiosk secrets or `VITE_*` keys |
-| MediaMTX **example** config only | Running MediaMTX / RTSP |
+| Event Core, health, acknowledge, WS | YOLO / fall algoritmus (detector repo) |
+| MediaMTX runtime + Admin Studio | Operátorské React UI (monitor repo) |
+| Kanonická projektová dokumentace | Legacy soubory v `docs/*.md` mimo `project/` |

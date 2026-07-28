@@ -45,6 +45,37 @@ public sealed class WindowsProcessInspector : IProcessInspector
         return null;
     }
 
+    public int? FindProcessByName(string processName)
+    {
+        var all = FindAllProcessIdsByName(processName);
+        return all.Count == 0 ? null : all[0];
+    }
+
+    public IReadOnlyList<int> FindAllProcessIdsByName(string processName)
+    {
+        if (string.IsNullOrWhiteSpace(processName)) return Array.Empty<int>();
+        var want = processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            ? processName[..^4]
+            : processName;
+        try
+        {
+            return Process.GetProcessesByName(want)
+                .Where(p =>
+                {
+                    try { return !p.HasExited; }
+                    catch { return false; }
+                })
+                .Select(p => p.Id)
+                .Distinct()
+                .OrderBy(id => id)
+                .ToList();
+        }
+        catch
+        {
+            return Array.Empty<int>();
+        }
+    }
+
     public bool KillProcessTree(int pid, string expectedNameFragment, out string message)
     {
         try
