@@ -604,9 +604,10 @@ public sealed class HardwareViewModel : ObservableObject
     public string LastOp { get => _lastOp; private set => SetField(ref _lastOp, value); }
     public string Banner =>
         "⚠ HARDWARE TEST MODE — manuální zásahy jen s potvrzením, auto-off ≤250 ms, žádná vazba detector→relay. " +
-        "Green/Red/Buzzer disabled bez mappingu. CONNECTED jen po úspěšném read-only probe.";
+        "Green/Red/Buzzer disabled bez fyzicky potvrzeného mappingu. CONNECTED = native BDaq4 open + DI/DO read.";
     public bool CanWrite => TestMode && _adapter.IsAvailable;
-    public bool CanSemantic => CanWrite && (_adapter as AdvantechUsb4761Adapter)?.MappingConfigured == true;
+    public bool CanSemantic =>
+        CanWrite && (_adapter as AdvantechUsb4761Adapter)?.MappingPhysicallyConfirmed == true;
 
     public AsyncRelayCommand RefreshCommand { get; }
     public RelayCommand CopyDiagnosticsCommand { get; }
@@ -637,10 +638,11 @@ public sealed class HardwareViewModel : ObservableObject
         {
             var d = adv.Discovery;
             DeviceLine =
-                $"Status: {d.Status} | Model: {d.Model} | SDK: {d.SdkPath} | Arch: {d.ProcessArch} | " +
+                $"Status: {d.Status} | Model: {d.Model} | SDK: {d.AssemblyName} @ {d.SdkPath} | Arch: {d.ProcessArch} | " +
                 $"DI={d.DiCount} [{FormatBits(d.DiValues)}] | DO={d.DoCount} [{FormatBits(d.DoValues)}] | " +
                 $"err={d.ErrorCode} | refresh={adv.LastSuccessfulRefresh?.ToLocalTime():HH:mm:ss} | " +
-                $"mapping={(adv.MappingConfigured ? "OK" : "NOT CONFIGURED")}";
+                $"mapping={(adv.MappingConfigured ? "CONFIGURED" : "NOT CONFIGURED")} | " +
+                $"physical={(adv.MappingPhysicallyConfirmed ? "CONFIRMED" : "HISTORICAL_ONLY")}";
             DiagnosticsPreview = adv.BuildDiagnosticsText();
             LastOp = adv.LastOperation;
             if (!string.IsNullOrWhiteSpace(adv.LastError))
@@ -708,7 +710,10 @@ public sealed class HardwareViewModel : ObservableObject
     {
         if (!CanSemantic)
         {
-            MessageBox.Show("Semantic mapping NOT CONFIGURED — nastav green/red/buzzer_channel v hardware.json.",
+            MessageBox.Show(
+                "Semantic mapping není fyzicky potvrzené.\n\n" +
+                "HISTORICAL: ch1=green, ch2=red, ch3=buzzer (detector safety-invariants / usb4761.md).\n" +
+                "Nastav mapping_physically_confirmed=true v runtime/config/hardware.json až po live wiring check.",
                 "Hardware", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }

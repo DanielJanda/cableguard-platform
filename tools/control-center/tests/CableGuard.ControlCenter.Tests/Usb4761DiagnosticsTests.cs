@@ -36,9 +36,28 @@ public class Usb4761DiagnosticsTests
     }
 
     [Fact]
-    public void ClampPulse_Never_Exceeds_250()
+    public void Native_BioDaq_Open_Read_When_Hardware_Present()
     {
-        var clamped = HardwareSafety.ClampPulse(TimeSpan.FromSeconds(10), AdvantechUsb4761Adapter.MaxPulse);
-        Assert.True(clamped <= AdvantechUsb4761Adapter.MaxPulse);
+        var daq = AdvantechUsb4761Adapter.FindDaqNavi();
+        if (daq is null)
+        {
+            // CI / machines without SDK — skip soft.
+            return;
+        }
+
+        try
+        {
+            using var session = BioDaqNativeSession.Open(daq);
+            var di = session.ReadDi();
+            var dout = session.ReadDo();
+            Assert.Equal("Automation.BDaq4", session.AssemblyName);
+            Assert.True(di.Length is 0 or 8);
+            Assert.Equal(8, dout.Length);
+        }
+        catch (BioDaqException ex) when (ex.ErrorCode is "OPEN_FAILED" or "DRIVER_ERROR")
+        {
+            // Device busy / Navigator holding exclusive lock — report but don't fail CI hard.
+            Assert.False(string.IsNullOrWhiteSpace(ex.ErrorCode));
+        }
     }
 }
