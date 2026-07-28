@@ -283,6 +283,15 @@ public sealed class CamerasViewModel : ObservableObject
         Process.Start(new ProcessStartInfo(_config.PreviewUrl(path)) { UseShellExecute = true });
     }
 
+    public void OpenInMonitor(CameraEntry camera)
+    {
+        // STREAM PREVIEW — never open E2E dashboard from camera row.
+        var path = string.IsNullOrWhiteSpace(camera.MediaMtxPath) ? camera.CameraId : camera.MediaMtxPath;
+        var url = $"http://{_config.LanHost}:8080/test-lab/stream/{Uri.EscapeDataString(path)}";
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        _logger.Info($"[CAMERAS] STREAM PREVIEW: {url}");
+    }
+
     public async Task<string> TestConnectionAsync(CameraEntry camera)
     {
         string tcpResult;
@@ -430,6 +439,9 @@ public sealed class CameraRowViewModel : ObservableObject
         IsPrimary = isPrimary;
         _parent = parent;
         PreviewCommand = new RelayCommand(() => _parent.Preview(Camera));
+        OpenInMonitorCommand = new RelayCommand(
+            () => _parent.OpenInMonitor(Camera),
+            () => string.Equals(Status, "READY", StringComparison.OrdinalIgnoreCase));
         TestCommand = new AsyncRelayCommand(async () => TestResult = await _parent.TestConnectionAsync(Camera));
         ToggleEnabledCommand = new RelayCommand(() => _parent.ToggleEnabled(Camera));
         SetPrimaryCommand = new AsyncRelayCommand(() => _parent.SetAsPrimaryAsync(Camera), () => Camera.Enabled && !IsPrimary);
@@ -450,6 +462,7 @@ public sealed class CameraRowViewModel : ObservableObject
     public string TestResult { get => _testResult; private set => SetField(ref _testResult, value); }
 
     public RelayCommand PreviewCommand { get; }
+    public RelayCommand OpenInMonitorCommand { get; }
     public AsyncRelayCommand TestCommand { get; }
     public RelayCommand ToggleEnabledCommand { get; }
     public AsyncRelayCommand SetPrimaryCommand { get; }
@@ -471,6 +484,7 @@ public sealed class CameraRowViewModel : ObservableObject
                 : "NOT READY",
             null => "MediaMTX?",
         };
+        OpenInMonitorCommand.RaiseCanExecuteChanged();
     }
 
     private void EditCredentials()

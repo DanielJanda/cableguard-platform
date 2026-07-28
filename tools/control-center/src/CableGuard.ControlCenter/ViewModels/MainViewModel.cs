@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using CableGuard.ControlCenter.Core.Models;
 using CableGuard.ControlCenter.Core.Services;
+using CableGuard.ControlCenter;
 
 namespace CableGuard.ControlCenter.ViewModels;
 
@@ -58,6 +59,12 @@ public sealed class MainViewModel : ObservableObject
         OpenTestLabCommand = new RelayCommand(() => Mode.TestLabCommand.Execute(null));
         RefreshCommand = new AsyncRelayCommand(RefreshAllAsync);
         StartDetectorPreviewCommand = new AsyncRelayCommand(StartDetectorPreviewAsync);
+        StartOfficeFallNoDebugCommand = new AsyncRelayCommand(() => StartOfficeFallAsync(debug: false));
+        StartOfficeFallDebugCommand = new AsyncRelayCommand(() => StartOfficeFallAsync(debug: true));
+        StopOfficeFallCommand = new AsyncRelayCommand(StopOfficeFallAsync);
+        RestartOfficeFallCommand = new AsyncRelayCommand(RestartOfficeFallAsync);
+        OpenOfficeE2eMonitorCommand = new RelayCommand(() => OpenUrl($"http://{_config.LanHost}:8080/test-lab/office-fall"));
+        OpenOfficeStreamPreviewCommand = new RelayCommand(() => OpenUrl($"http://{_config.LanHost}:8080/test-lab/stream/office-test-camera"));
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _refreshTimer.Tick += (_, _) =>
@@ -90,6 +97,8 @@ public sealed class MainViewModel : ObservableObject
 
     public string SystemStatus { get => _systemStatus; private set => SetField(ref _systemStatus, value); }
     public string StartAllProgress { get => _startAllProgress; private set => SetField(ref _startAllProgress, value); }
+    public string BuildStamp => BuildInfo.Summary;
+    public string PlatformRootHint => _config.PlatformRoot;
 
     public AsyncRelayCommand StartAllCommand { get; }
     public AsyncRelayCommand StopAllCommand { get; }
@@ -98,6 +107,12 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand OpenTestLabCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
     public AsyncRelayCommand StartDetectorPreviewCommand { get; }
+    public AsyncRelayCommand StartOfficeFallNoDebugCommand { get; }
+    public AsyncRelayCommand StartOfficeFallDebugCommand { get; }
+    public AsyncRelayCommand StopOfficeFallCommand { get; }
+    public AsyncRelayCommand RestartOfficeFallCommand { get; }
+    public RelayCommand OpenOfficeE2eMonitorCommand { get; }
+    public RelayCommand OpenOfficeStreamPreviewCommand { get; }
 
     public async Task RefreshAllAsync()
     {
@@ -167,6 +182,48 @@ public sealed class MainViewModel : ObservableObject
         }
         await Detectors.OpenDebugAsync(fall);
         await RefreshAllAsync();
+    }
+
+    private DetectorInstance? FindOfficeFall() =>
+        Detectors.Items.Select(r => r.Instance).FirstOrDefault(i =>
+            string.Equals(i.Id, "fall-office-test", StringComparison.OrdinalIgnoreCase));
+
+    private async Task StartOfficeFallAsync(bool debug)
+    {
+        var office = FindOfficeFall();
+        if (office is null)
+        {
+            MessageBox.Show("Instance fall-office-test není v detectors.json.", "Office fall",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        // Independent start: test_mode path via scenario flags — no Telegram, no relay auto.
+        office.Enabled = true;
+        office.DebugOverlay = debug;
+        office.PublishEventCore = true;
+        Notifications.TelegramEnabled = false;
+        _logger.Info($"[GUI] Start fall-office-test debug={debug} telegram=OFF relay_auto=OFF");
+        await Detectors.StartAsync(office, debug);
+        StartAllProgress += $"fall-office-test started (debug={debug}, test_mode expected, telegram off){Environment.NewLine}";
+        await RefreshAllAsync();
+    }
+
+    private async Task StopOfficeFallAsync()
+    {
+        var office = FindOfficeFall();
+        if (office is null) return;
+        _logger.Info("[GUI] Stop fall-office-test only");
+        await Detectors.StopAsync(office);
+        await RefreshAllAsync();
+    }
+
+    private async Task RestartOfficeFallAsync()
+    {
+        var office = FindOfficeFall();
+        var debug = office?.DebugOverlay ?? false;
+        await StopOfficeFallAsync();
+        await Task.Delay(1500);
+        await StartOfficeFallAsync(debug);
     }
 
     private static void OpenUrl(string url) =>

@@ -554,6 +554,7 @@ public sealed class HardwareViewModel : ObservableObject
     private bool _testMode;
     private string _status = "";
     private string _deviceLine = "";
+    private string _diagnosticsPreview = "";
     private string _lastOp = "—";
 
     public HardwareViewModel(ControlCenterLogger logger, IHardwareAdapter adapter)
@@ -561,6 +562,7 @@ public sealed class HardwareViewModel : ObservableObject
         _logger = logger; _adapter = adapter;
         _status = adapter.StatusDetail;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        CopyDiagnosticsCommand = new RelayCommand(CopyDiagnostics);
         Pulse1Command = new AsyncRelayCommand(() => Pulse(1), () => CanWrite);
         Pulse2Command = new AsyncRelayCommand(() => Pulse(2), () => CanWrite);
         Pulse3Command = new AsyncRelayCommand(() => Pulse(3), () => CanWrite);
@@ -584,7 +586,6 @@ public sealed class HardwareViewModel : ObservableObject
                 {
                     try
                     {
-                        // Entering TEST MODE: verify connection and force ALL OFF when available.
                         _ = EnterTestModeAsync();
                     }
                     catch (Exception ex)
@@ -599,12 +600,17 @@ public sealed class HardwareViewModel : ObservableObject
 
     public string Status { get => _status; private set => SetField(ref _status, value); }
     public string DeviceLine { get => _deviceLine; private set => SetField(ref _deviceLine, value); }
+    public string DiagnosticsPreview { get => _diagnosticsPreview; private set => SetField(ref _diagnosticsPreview, value); }
     public string LastOp { get => _lastOp; private set => SetField(ref _lastOp, value); }
-    public string Banner => "⚠ HARDWARE TEST MODE — manuální zásahy jen s potvrzením, auto-off ≤500 ms, žádná vazba detector→relay";
+    public string Banner =>
+        "⚠ HARDWARE TEST MODE — manuální zásahy jen s potvrzením, auto-off ≤250 ms, žádná vazba detector→relay. " +
+        "Green/Red/Buzzer disabled bez fyzicky potvrzeného mappingu. CONNECTED = native BDaq4 open + DI/DO read.";
     public bool CanWrite => TestMode && _adapter.IsAvailable;
-    public bool CanSemantic => CanWrite && (_adapter as AdvantechUsb4761Adapter)?.MappingConfigured == true;
+    public bool CanSemantic =>
+        CanWrite && (_adapter as AdvantechUsb4761Adapter)?.MappingPhysicallyConfirmed == true;
 
     public AsyncRelayCommand RefreshCommand { get; }
+    public RelayCommand CopyDiagnosticsCommand { get; }
     public AsyncRelayCommand Pulse1Command { get; }
     public AsyncRelayCommand Pulse2Command { get; }
     public AsyncRelayCommand Pulse3Command { get; }
@@ -631,8 +637,13 @@ public sealed class HardwareViewModel : ObservableObject
         if (_adapter is AdvantechUsb4761Adapter adv)
         {
             var d = adv.Discovery;
-            DeviceLine = $"Device: {d.Status} | Model: {d.Model} | Serial: {d.SerialMasked} | " +
-                         $"Driver: {d.DriverStatus} | Relays: {d.RelayCount} | DI: {d.DiCount}";
+            DeviceLine =
+                $"Status: {d.Status} | Model: {d.Model} | SDK: {d.AssemblyName} @ {d.SdkPath} | Arch: {d.ProcessArch} | " +
+                $"DI={d.DiCount} [{FormatBits(d.DiValues)}] | DO={d.DoCount} [{FormatBits(d.DoValues)}] | " +
+                $"err={d.ErrorCode} | refresh={adv.LastSuccessfulRefresh?.ToLocalTime():HH:mm:ss} | " +
+                $"mapping={(adv.MappingConfigured ? "CONFIGURED" : "NOT CONFIGURED")} | " +
+                $"physical={(adv.MappingPhysicallyConfirmed ? "CONFIRMED" : "HISTORICAL_ONLY")}";
+            DiagnosticsPreview = adv.BuildDiagnosticsText();
             LastOp = adv.LastOperation;
             if (!string.IsNullOrWhiteSpace(adv.LastError))
                 Status = adv.StatusDetail;
@@ -640,18 +651,31 @@ public sealed class HardwareViewModel : ObservableObject
         else
         {
             DeviceLine = _adapter.IsAvailable ? "Device: CONNECTED" : "Device: NOT AVAILABLE";
+            DiagnosticsPreview = _adapter.StatusDetail;
         }
-
-        try
-        {
-            var di = await _adapter.ReadDigitalInputsAsync();
-            if (di.Count > 0)
-                DeviceLine += " | DI: " + string.Join(" ", di.Select(kv => $"{kv.Key}={(kv.Value ? 1 : 0)}"));
-        }
-        catch { /* discovery-only ok */ }
 
         RaiseCanExecutes();
     }
+
+    private void CopyDiagnostics()
+    {
+        var text = _adapter is AdvantechUsb4761Adapter adv
+            ? adv.BuildDiagnosticsText()
+            : Status;
+        try
+        {
+            Clipboard.SetText(text);
+            LastOp = "diagnostics copied";
+            _logger.Info("[HW] Diagnostics copied to clipboard");
+        }
+        catch (Exception ex)
+        {
+            Status = $"Copy failed: {ex.Message}";
+        }
+    }
+
+    private static string FormatBits(IReadOnlyList<bool> bits) =>
+        bits.Count == 0 ? "—" : string.Join("", bits.Select(b => b ? "1" : "0"));
 
     private void RaiseCanExecutes()
     {
@@ -666,11 +690,11 @@ public sealed class HardwareViewModel : ObservableObject
 
     private async Task Pulse(int ch)
     {
-        if (!Confirm($"Pulse relay {ch} (max 500 ms)?")) return;
+        if (!Confirm($"Pulse relay {ch} (max 250 ms)?")) return;
         try
         {
             HardwareSafety.EnsureTestMode(_adapter);
-            await _adapter.PulseRelayAsync(ch, HardwareSafety.ClampPulse(TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500)));
+            await _adapter.PulseRelayAsync(ch, HardwareSafety.ClampPulse(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250)));
             LastOp = $"pulse {ch}";
             _logger.Info($"[HW] Pulse relay {ch} OK");
             await RefreshAsync();
@@ -686,11 +710,14 @@ public sealed class HardwareViewModel : ObservableObject
     {
         if (!CanSemantic)
         {
-            MessageBox.Show("Semantic mapping NOT CONFIGURED — nastav green/red/buzzer_channel v hardware.json.",
+            MessageBox.Show(
+                "Semantic mapping není fyzicky potvrzené.\n\n" +
+                "HISTORICAL: ch1=green, ch2=red, ch3=buzzer (detector safety-invariants / usb4761.md).\n" +
+                "Nastav mapping_physically_confirmed=true v runtime/config/hardware.json až po live wiring check.",
                 "Hardware", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (!Confirm($"Pulse semaphore {color} (≤500 ms)?")) return;
+        if (!Confirm($"Pulse semaphore {color} (≤250 ms)?")) return;
         try
         {
             HardwareSafety.EnsureTestMode(_adapter);
@@ -745,12 +772,40 @@ public sealed class ScenariosViewModel : ObservableObject
         _config = config; _logger = logger; _detectors = detectors; _notifications = notifications; _hardware = hardware;
         Reload();
         RunCommand = new AsyncRelayCommand(RunSelected);
+        OpenE2eDashboardCommand = new RelayCommand(OpenE2eDashboard);
+        OpenStreamPreviewCommand = new RelayCommand(OpenStreamPreview);
     }
 
     public ObservableCollection<ScenarioDocument> Items { get; } = new();
     public ScenarioDocument? Selected { get; set; }
     public string DiffText { get => _diffText; private set => SetField(ref _diffText, value); }
     public AsyncRelayCommand RunCommand { get; }
+    public RelayCommand OpenE2eDashboardCommand { get; }
+    public RelayCommand OpenStreamPreviewCommand { get; }
+
+    /// <summary>END-TO-END FALL DASHBOARD — kiosk overlay + WS + ack.</summary>
+    public void OpenE2eDashboard()
+    {
+        var station = TestStationService.Find(
+                          TestStationService.Load(_config.TestStationsJsonPath), "office-test")
+                      ?? TestStationService.OfficeDefault().Stations[0];
+        var path = string.IsNullOrWhiteSpace(station.MonitorPath) ? "/test-lab/office-fall" : station.MonitorPath;
+        var url = $"http://{_config.LanHost}:8080{path}";
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        _logger.Info($"[SCENARIO] END-TO-END FALL DASHBOARD: {url}");
+    }
+
+    /// <summary>STREAM PREVIEW — video only for office-test-camera.</summary>
+    public void OpenStreamPreview()
+    {
+        var station = TestStationService.Find(
+                          TestStationService.Load(_config.TestStationsJsonPath), "office-test")
+                      ?? TestStationService.OfficeDefault().Stations[0];
+        var stream = string.IsNullOrWhiteSpace(station.VideoStream) ? "office-test-camera" : station.VideoStream;
+        var url = $"http://{_config.LanHost}:8080/test-lab/stream/{Uri.EscapeDataString(stream)}";
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        _logger.Info($"[SCENARIO] STREAM PREVIEW: {url}");
+    }
 
     public void Reload()
     {
@@ -769,9 +824,21 @@ public sealed class ScenariosViewModel : ObservableObject
         {
             new ScenarioDocument
             {
+                Id = "office-e2e-fall-test",
+                DisplayName = "OFFICE END-TO-END FALL TEST",
+                Description = "Kancelář – test pádu: MediaMTX + Event Core + Monitor + fall-office-test (test_mode)",
+                StreamId = "office-test-camera",
+                DetectorIds = { "fall-office-test" },
+                RoiProfile = "office-fall-test",
+                DebugOverlay = true,
+                Telegram = false,
+                EventCore = true,
+            },
+            new ScenarioDocument
+            {
                 Id = "office-fall-test", DisplayName = "Office fall detection",
                 Description = "Office camera, fall detector, debug ON, Telegram OFF",
-                StreamId = "office-test", DetectorIds = { "fall-office-test" },
+                StreamId = "office-test-camera", DetectorIds = { "fall-office-test" },
                 RoiProfile = "office-fall-test", DebugOverlay = true,
             },
             new ScenarioDocument
@@ -806,8 +873,10 @@ public sealed class ScenariosViewModel : ObservableObject
     {
         if (Selected is null) return;
         RefreshDiff();
+        var isOfficeE2e = string.Equals(Selected.Id, "office-e2e-fall-test", StringComparison.OrdinalIgnoreCase);
+        var title = isOfficeE2e ? "SPUSTIT KANCELÁŘSKÝ TEST PÁDU" : "Scenario";
         if (MessageBox.Show($"RUN SCENARIO: {Selected.DisplayName}?\n\n{DiffText}",
-                "Scenario", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
+                title, MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
             return;
         _logger.Info($"[SCENARIO] RUN {Selected.Id}");
         if (Selected.HardwareTest) _hardware.TestMode = true;
@@ -816,6 +885,48 @@ public sealed class ScenariosViewModel : ObservableObject
         // Snapshot before any Start/Stop that may reload Items.
         var snapshot = _detectors.Items.Select(r => r.Instance).ToList();
         var wanted = new HashSet<string>(Selected.DetectorIds, StringComparer.OrdinalIgnoreCase);
+
+        if (isOfficeE2e)
+        {
+            // Office E2E: start only fall-office-test; do not stop production detectors / shared services.
+            foreach (var instance in snapshot.Where(i => wanted.Contains(i.Id)))
+            {
+                if (Selected.EventCore)
+                    instance.PublishEventCore = true;
+                instance.PublishTelegram = false;
+                instance.DebugOverlay = Selected.DebugOverlay || instance.DebugOverlay;
+                instance.InputStream = string.IsNullOrWhiteSpace(Selected.StreamId)
+                    ? instance.InputStream
+                    : Selected.StreamId;
+                await _detectors.StartAsync(instance, instance.DebugOverlay, reload: false);
+            }
+            await _detectors.ReloadAsync();
+
+            var station = TestStationService.Find(
+                TestStationService.Load(_config.TestStationsJsonPath), "office-test")
+                ?? TestStationService.OfficeDefault().Stations[0];
+            // Always open END-TO-END FALL DASHBOARD (not stream preview).
+            var url = $"http://{_config.LanHost}:8080/test-lab/office-fall";
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[SCENARIO] open E2E dashboard failed: {ex.Message}");
+            }
+
+            MessageBox.Show(
+                "Kancelářský E2E test spuštěn (best-effort).\n\n" +
+                $"1) MediaMTX path: {station.VideoStream}\n" +
+                $"2) Detector: {station.FallServiceId}\n" +
+                $"3) END-TO-END FALL DASHBOARD: {url}\n" +
+                $"4) STREAM PREVIEW (odděleně): http://{_config.LanHost}:8080/test-lab/stream/{station.VideoStream}\n\n" +
+                "Zastavení scénáře ukončí pouze fall-office-test — neprodukční MediaMTX/Event Core/Monitor.",
+                "OFFICE E2E", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         foreach (var instance in snapshot)
         {
             var want = wanted.Contains(instance.Id);

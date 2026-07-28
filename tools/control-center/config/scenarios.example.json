@@ -2,10 +2,22 @@
   "version": 1,
   "scenarios": [
     {
+      "id": "office-e2e-fall-test",
+      "display_name": "OFFICE END-TO-END FALL TEST",
+      "description": "Kancelář – test pádu: MediaMTX office-test-camera → Event Core → Monitor /test-lab/office-fall → fall-office-test (Telegram OFF, relay OFF, test_mode)",
+      "stream_id": "office-test-camera",
+      "detector_ids": ["fall-office-test"],
+      "roi_profile": "office-fall-test",
+      "debug_overlay": true,
+      "telegram": false,
+      "event_core": true,
+      "hardware_test": false
+    },
+    {
       "id": "office-fall-test",
       "display_name": "Office fall detection",
       "description": "Office camera, fall detector, debug ON, Telegram OFF, relay OFF",
-      "stream_id": "office-test",
+      "stream_id": "office-test-camera",
       "detector_ids": ["fall-office-test"],
       "roi_profile": "office-fall-test",
       "debug_overlay": true,

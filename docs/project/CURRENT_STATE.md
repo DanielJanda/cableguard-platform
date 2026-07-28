@@ -108,10 +108,8 @@ Důvod: uživatel explicitně zvolil čistý internal-LAN provoz. Lovable.app ja
 
 ## Nesrovnalosti staré dokumentace vs. aktuální kód
 
-1. **platform `docs/operations.md`** — tvrdí, že CORS default je „local Vite origins only“; kód (`config.py`) obsahuje i LAN originy `http://10.6.1.40:8080`, `localhost:8080`, `127.0.0.1:8080`.
-2. **platform `docs/api.md` / kontrakty** — popisují GET/WS jako trusted `127.0.0.1`; interní runtime skripty záměrně bindují `0.0.0.0` (trusted-LAN model, viz SECURITY.md).
-3. **platform `contracts/websocket-events.md`** — `service.offline` je emitován i pro heartbeat s `status=offline`, ne jen pro timeout.
-4. **monitor `docs/native-realtime-video.md`** — naznačuje, že `VITE_VIDEO_MODE=whep` funguje i v PROD buildu; kód v PROD **vynucuje `placeholder`**, pokud není `VITE_DEPLOYMENT_MODE=internal-lan`.
-5. **monitor `docs/local-integration.md`** — staví na deprecated `VITE_VIDEO_POC_MODE=iframe`; runtime preferuje `VITE_VIDEO_MODE`.
-6. **monitor WHEP kontrakt** — dokumentace připouští POST 200/201; klient vyžaduje **výhradně 201** (MediaMTX v1.11.3).
-7. **detector `README.md` / `repo-structure.md`** — označují fall pad jako PLANNED / model missing; fall pad reálně existuje na feature větvích včetně modelu (LFS) a golden testů.
+1. **platform `contracts/websocket-events.md`** — `service.offline` je emitován i pro heartbeat s `status=offline`, ne jen pro timeout.
+2. **monitor `docs/native-realtime-video.md`** — naznačuje, že `VITE_VIDEO_MODE=whep` funguje i v PROD buildu; kód v PROD **vynucuje `placeholder`**, pokud není `VITE_DEPLOYMENT_MODE=internal-lan`.
+3. **monitor `docs/local-integration.md`** — staví na deprecated `VITE_VIDEO_POC_MODE=iframe`; runtime preferuje `VITE_VIDEO_MODE`.
+4. **monitor WHEP kontrakt** — dokumentace připouští POST 200/201; klient vyžaduje **výhradně 201** (MediaMTX v1.11.3).
+5. **detector `README.md` / `repo-structure.md`** — označují fall pad jako PLANNED / model missing; fall pad reálně existuje na feature větvích včetně modelu (LFS) a golden testů.

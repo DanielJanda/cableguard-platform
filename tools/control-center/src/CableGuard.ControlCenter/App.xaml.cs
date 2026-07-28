@@ -16,8 +16,10 @@ public partial class App : Application
         RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
         var config = ControlCenterConfig.LoadOrDefault();
+        BuildInfo.Initialize(config);
         var logger = new ControlCenterLogger(config.LogsDir);
-        logger.Info("Control Center (Admin Studio) starting.");
+        logger.Info($"Control Center (Admin Studio) starting. {BuildInfo.Summary}");
+        logger.Info($"PlatformRoot={config.PlatformRoot}");
 
         DispatcherUnhandledException += (_, args) =>
         {

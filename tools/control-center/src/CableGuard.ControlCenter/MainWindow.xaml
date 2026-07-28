@@ -233,36 +233,66 @@
     <TabControl>
       <!-- PŘEHLED -->
       <TabItem Header="Přehled">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="16">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
           </Grid.RowDefinitions>
-          <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="SYSTÉM  " FontSize="28" FontWeight="Bold"/>
-            <TextBlock Text="{Binding SystemStatus}" FontSize="28" FontWeight="Bold" Foreground="#FF66BB6A"/>
+          <StackPanel Grid.Row="0" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="SYSTÉM  " FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="{Binding SystemStatus}" FontSize="28" FontWeight="Bold" Foreground="#FF66BB6A"/>
+            </StackPanel>
+            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="#FF90A4AE" Margin="0,4,0,0"
+                       Text="{Binding BuildStamp, StringFormat=BUILD: {0}}"/>
           </StackPanel>
-          <ItemsControl Grid.Row="1" ItemsSource="{Binding Services}">
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding Services}" Margin="0,0,0,8">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Grid Margin="0,4">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="180"/><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/>
-                  </Grid.ColumnDefinitions>
-                  <TextBlock Text="{Binding Name}" FontSize="15"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="15" Style="{StaticResource StatusBadge}"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource FgMuted}" TextWrapping="Wrap"/>
-                </Grid>
+                <Border Background="#FF23272F" CornerRadius="6" Padding="10" Margin="0,4">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="160"/><ColumnDefinition Width="110"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="14" Style="{StaticResource StatusBadge}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="11" Foreground="{StaticResource FgMuted}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="8,0"/>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+                      <Button Content="Start" Command="{Binding StartCommand}" Background="#FF2E7D32"/>
+                      <Button Content="Stop" Command="{Binding StopCommand}" Background="#FF8E2A2A"/>
+                      <Button Content="Restart" Command="{Binding RestartCommand}"/>
+                      <Button Content="Logy" Command="{Binding LogsCommand}"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
 
-          <Border Grid.Row="2" Background="#FF1E3A5F" Padding="10" CornerRadius="4" Margin="0,14,0,8">
-            <TextBlock TextWrapping="Wrap" FontSize="13"
-                       Text="Náhled detekce: tlačítko „Detekce s náhledem“ otevře samostatné okno OpenCV s kostrou a ROI. Běžný START PRODUKCE běží bez okna (jen výpočet). Monitor / kiosk ukazují čisté video bez AI překryvu."/>
+          <Border Grid.Row="2" Background="#FF3E2723" Padding="10" CornerRadius="4" Margin="0,4,0,8">
+            <StackPanel>
+              <TextBlock Text="OFFICE TEST — nezávislé ovládání (nevyžaduje START PRODUKCE)" FontWeight="Bold" Foreground="#FFFFCC80"/>
+              <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,4,0,8" Foreground="#FFFFE0B2"
+                         Text="fall-office-test: Telegram OFF, relay auto OFF, CABLEGUARD_TEST_MODE. Frontend WHEP = office-test-camera (ne detector output)."/>
+              <StackPanel Orientation="Horizontal">
+                <Button Content="Start bez debug" Command="{Binding StartOfficeFallNoDebugCommand}" Background="#FF2E7D32"/>
+                <Button Content="Start s debug" Command="{Binding StartOfficeFallDebugCommand}" Background="#FFEF6C00" Foreground="#FF111318"/>
+                <Button Content="Stop detector" Command="{Binding StopOfficeFallCommand}" Background="#FF8E2A2A"/>
+                <Button Content="Restart" Command="{Binding RestartOfficeFallCommand}"/>
+                <Button Content="E2E monitor" Command="{Binding OpenOfficeE2eMonitorCommand}" Background="#FF5D4037"/>
+                <Button Content="STREAM PREVIEW" Command="{Binding OpenOfficeStreamPreviewCommand}" Background="#FF3A5A8C"/>
+              </StackPanel>
+            </StackPanel>
           </Border>
 
-          <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,4,0,0">
+          <Border Grid.Row="3" Background="#FF1E3A5F" Padding="10" CornerRadius="4" Margin="0,0,0,8">
+            <TextBlock TextWrapping="Wrap" FontSize="13"
+                       Text="Náhled detekce: OpenCV debug okno ≠ WHEP v monitoru. START PRODUKCE = produkční stack. Office test spouštěj kartami výše."/>
+          </Border>
+
+          <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,4,0,0">
             <Button Content="START PRODUKCE" FontWeight="Bold" Padding="16,8" Background="#FF2E7D32" Command="{Binding StartAllCommand}"/>
             <Button Content="STOP VŠE" Padding="16,8" Background="#FF8E2A2A" Command="{Binding StopAllCommand}"/>
             <Button Content="DETEKCE S NÁHLEDEM" Padding="16,8" Background="#FFEF6C00" Foreground="#FF111318"
@@ -272,10 +302,11 @@
             <Button Content="TESTOVÁNÍ" Padding="16,8" Background="#FF8B5A00" Command="{Binding OpenTestLabCommand}"/>
             <Button Content="Obnovit" Padding="16,8" Command="{Binding RefreshCommand}"/>
           </StackPanel>
-          <Border Grid.Row="4" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10">
+          <Border Grid.Row="5" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10" MinHeight="120">
             <ScrollViewer><TextBlock Text="{Binding StartAllProgress}" FontFamily="Consolas" FontSize="12" Foreground="#FFDDE1E7"/></ScrollViewer>
           </Border>
         </Grid>
+        </ScrollViewer>
       </TabItem>
 
       <TabItem Header="Scénáře" DataContext="{Binding Scenarios}">
@@ -286,8 +317,16 @@
             <StackPanel DockPanel.Dock="Top">
               <TextBlock Text="{Binding Selected.DisplayName}" FontSize="18" FontWeight="SemiBold"/>
               <TextBlock Text="{Binding Selected.Description}" Foreground="{StaticResource FgMuted}" Margin="0,4,0,8" TextWrapping="Wrap"/>
-              <Button Content="SPUSTIT SCÉNÁŘ" HorizontalAlignment="Left" Padding="16,8" Background="#FF2E7D32"
-                      Command="{Binding RunCommand}" Margin="0,0,0,12"/>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="SPUSTIT KANCELÁŘSKÝ TEST PÁDU" HorizontalAlignment="Left" Padding="16,8" Background="#FF2E7D32"
+                        Command="{Binding RunCommand}" Margin="0,0,8,0"/>
+                <Button Content="END-TO-END FALL DASHBOARD" HorizontalAlignment="Left" Padding="16,8" Background="#FF5D4037"
+                        Command="{Binding OpenE2eDashboardCommand}" ToolTip="http://10.6.1.40:8080/test-lab/office-fall"/>
+                <Button Content="STREAM PREVIEW" HorizontalAlignment="Left" Padding="16,8" Background="#FF3A5A8C"
+                        Command="{Binding OpenStreamPreviewCommand}" ToolTip="http://10.6.1.40:8080/test-lab/stream/office-test-camera"/>
+              </StackPanel>
+              <TextBlock TextWrapping="Wrap" Foreground="#FFFFCC80" Margin="0,0,0,8"
+                         Text="STREAM PREVIEW = jen video (/test-lab/stream/…). END-TO-END FALL DASHBOARD = kiosk overlay + WS + ack (/test-lab/office-fall)."/>
               <TextBlock Text="Rozdíl oproti aktuálnímu nastavení:" FontWeight="SemiBold"/>
             </StackPanel>
             <Border Background="#FF14161A" Padding="10" CornerRadius="4">
@@ -323,6 +362,7 @@
                       <Button Content="Test" Command="{Binding TestCommand}"/>
                       <Button Content="Apply MTX" Command="{Binding ApplyCommand}" Background="#FF2E7D32"/>
                       <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="Otevřít v monitoru" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"/>
                       <Button Content="Primární" Command="{Binding SetPrimaryCommand}" Background="#FF3A5A8C"/>
                       <Button Content="Přihlášení" Command="{Binding EditCredentialsCommand}"/>
                       <Button Content="{Binding EnableLabel}" Command="{Binding ToggleEnabledCommand}"/>
@@ -359,7 +399,9 @@
                       <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                      <Button Content="Náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="MediaMTX náhled" Command="{Binding PreviewCommand}"/>
+                      <Button Content="STREAM PREVIEW" Command="{Binding OpenInMonitorCommand}" Background="#FF3A5A8C"
+                              ToolTip="Otevře /test-lab/stream/{streamId} — jen video, ne E2E dashboard"/>
                       <Button Content="Použít" Command="{Binding ApplyCommand}"/>
                     </StackPanel>
                   </Grid>
@@ -509,12 +551,13 @@
           <CheckBox Content="Zapnout HARDWARE TEST MODE" IsChecked="{Binding TestMode}" Foreground="#FFFFCC80"/>
           <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
             <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
+            <Button Content="Kopírovat diagnostiku" Command="{Binding CopyDiagnosticsCommand}" Margin="8,0,0,0" Background="#FF3A5A8C"/>
             <Button Content="Vše vyp (ALL OFF)" Command="{Binding AllOffCommand}" Margin="8,0,0,0"/>
           </StackPanel>
           <TextBlock Text="{Binding DeviceLine}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,6"/>
           <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,6"/>
           <TextBlock Text="{Binding LastOp, StringFormat=Last operation: {0}}" Foreground="#FFFFCC80" Margin="0,0,0,12"/>
-          <TextBlock Text="Impulz relé (max 500 ms, vyžaduje TEST MODE)" FontWeight="SemiBold"/>
+          <TextBlock Text="Impulz relé (max 250 ms, vyžaduje TEST MODE + CONNECTED probe)" FontWeight="SemiBold"/>
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
             <Button Content="Relé 1" Command="{Binding Pulse1Command}"/>
             <Button Content="Relé 2" Command="{Binding Pulse2Command}"/>
@@ -524,9 +567,9 @@
           <StackPanel Orientation="Horizontal" Margin="0,6,0,12">
             <Button Content="ZELENÁ" Command="{Binding GreenCommand}" Background="#FF2E7D32"/>
             <Button Content="ČERVENÁ" Command="{Binding RedCommand}" Background="#FF8E2A2A"/>
-            <Button Content="Bzučák ≤500 ms" Command="{Binding BuzzerCommand}"/>
+            <Button Content="Bzučák ≤250 ms" Command="{Binding BuzzerCommand}"/>
           </StackPanel>
-          <TextBlock Text="Žádná automatická vazba detektor pádu → relé. Pouze ruční diagnostika."
+          <TextBlock Text="Žádná automatická vazba detektor pádu → relé. Pouze ruční diagnostika. CONNECTED = SDK load + open + DI/DO read."
                      Foreground="#FFFFCC80" FontSize="12"/>
         </StackPanel>
       </TabItem>

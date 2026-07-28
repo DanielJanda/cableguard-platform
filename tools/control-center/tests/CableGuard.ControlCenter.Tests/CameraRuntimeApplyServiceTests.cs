@@ -173,10 +173,10 @@ public class HardwareGuardTests
     }
 
     [Fact]
-    public void PulseClamp_Max500ms()
+    public void PulseClamp_Max250ms()
     {
-        var clamped = HardwareSafety.ClampPulse(TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(500));
-        Assert.Equal(TimeSpan.FromMilliseconds(500), clamped);
+        var clamped = HardwareSafety.ClampPulse(TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(250));
+        Assert.Equal(TimeSpan.FromMilliseconds(250), clamped);
     }
 
     [Fact]

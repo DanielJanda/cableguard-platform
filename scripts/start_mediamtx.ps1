@@ -1,3 +1,22 @@
+<#
+.SYNOPSIS
+    Starts MediaMTX. Uses the CableGuardMediaMTX Windows service whenever it is installed.
+
+.DESCRIPTION
+    The service is the production path (continuous ingest, survives logoff, restarts on
+    failure). Starting mediamtx.exe directly is only allowed in explicit development mode
+    and only while the service does not exist, so two instances can never fight over the
+    RTSP/WHEP/API ports.
+
+.PARAMETER Development
+    Start a foreground-owned mediamtx.exe instead of the service. Refused when the
+    service is installed.
+#>
+[CmdletBinding()]
+param(
+    [switch]$Development
+)
+
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $RuntimeDir = Join-Path $Root "runtime\mediamtx"
@@ -7,6 +26,8 @@ $Config = Join-Path $DeployDir "mediamtx.local.yml"
 $PidFile = Join-Path $RuntimeDir "mediamtx.pid"
 $OutLog = Join-Path $RuntimeDir "mediamtx.out.log"
 $ErrLog = Join-Path $RuntimeDir "mediamtx.err.log"
+$ServiceName = "CableGuardMediaMTX"
+$ManageScript = Join-Path $PSScriptRoot "manage_mediamtx_service.ps1"
 
 function Write-Urls {
     Write-Host "Browser: http://127.0.0.1:8889/zahradky-horni-stanice" -ForegroundColor Cyan
@@ -19,6 +40,27 @@ function Adopt-Existing([int]$pidToAdopt, [string]$reason) {
     Write-Host ("MediaMTX already running (PID {0}) - {1}. Adopted into PID file." -f $pidToAdopt, $reason) -ForegroundColor Yellow
     Write-Urls
     exit 0
+}
+
+$service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+
+if ($service) {
+    if ($Development) {
+        Write-Host "Service $ServiceName is installed - refusing a second development instance." -ForegroundColor Red
+        Write-Host "Use scripts/manage_mediamtx_service.ps1 -Action uninstall first." -ForegroundColor Yellow
+        exit 1
+    }
+    & $ManageScript -Action start
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Urls
+    exit 0
+}
+
+if (-not $Development) {
+    Write-Host "MediaMTX service $ServiceName is not installed." -ForegroundColor Red
+    Write-Host "Install the permanent service:  scripts/manage_mediamtx_service.ps1 -Action install" -ForegroundColor Yellow
+    Write-Host "Or start a throwaway dev instance:  scripts/start_mediamtx.ps1 -Development" -ForegroundColor Yellow
+    exit 1
 }
 
 if (-not (Test-Path $Exe)) {
@@ -79,5 +121,5 @@ if ($proc.HasExited) {
     exit 1
 }
 
-Write-Host ("Managed MediaMTX started (PID {0})." -f $proc.Id) -ForegroundColor Green
+Write-Host ("Development MediaMTX started (PID {0})." -f $proc.Id) -ForegroundColor Green
 Write-Urls

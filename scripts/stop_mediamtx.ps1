@@ -2,6 +2,14 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $RuntimeDir = Join-Path $Root "runtime\mediamtx"
 $PidFile = Join-Path $RuntimeDir "mediamtx.pid"
+$ServiceName = "CableGuardMediaMTX"
+$ManageScript = Join-Path $PSScriptRoot "manage_mediamtx_service.ps1"
+
+# When the service owns MediaMTX, killing the process would only trigger a recovery restart.
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    & $ManageScript -Action stop
+    exit $LASTEXITCODE
+}
 
 function Stop-MediaMtxPid([int]$managedPid) {
     $proc = Get-Process -Id $managedPid -ErrorAction SilentlyContinue

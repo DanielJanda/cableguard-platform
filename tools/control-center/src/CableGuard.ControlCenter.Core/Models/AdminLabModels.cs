@@ -89,6 +89,12 @@ public sealed class HardwareDocument
     [JsonPropertyName("green_channel")] public int? GreenChannel { get; set; }
     [JsonPropertyName("red_channel")] public int? RedChannel { get; set; }
     [JsonPropertyName("buzzer_channel")] public int? BuzzerChannel { get; set; }
+    /// <summary>
+    /// HISTORICAL mapping from detector safety-invariants may fill channels,
+    /// but semantic Green/Red/Buzzer stay disabled until this is true after live wiring check.
+    /// </summary>
+    [JsonPropertyName("mapping_physically_confirmed")] public bool MappingPhysicallyConfirmed { get; set; }
+    [JsonPropertyName("mapping_source")] public string MappingSource { get; set; } = "";
     [JsonPropertyName("relay_count")] public int RelayCount { get; set; } = 8;
     [JsonPropertyName("di_count")] public int DiCount { get; set; } = 8;
 }

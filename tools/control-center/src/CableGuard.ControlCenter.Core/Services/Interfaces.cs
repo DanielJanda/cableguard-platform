@@ -10,10 +10,21 @@ public interface IHttpProber
     Task<string?> GetBodyAsync(string url, CancellationToken ct = default);
 }
 
+/// <summary>Windows service facts needed to tell "service running" apart from "component healthy".</summary>
+public sealed record WindowsServiceInfo(string Name, string State, string StartMode, bool DelayedAutoStart)
+{
+    public bool IsRunning => State.Equals("Running", StringComparison.OrdinalIgnoreCase);
+
+    public string StartupDescription => DelayedAutoStart ? "Automatic (Delayed Start)" : StartMode;
+}
+
 public interface IProcessInspector
 {
     /// <summary>Reads a PID file and returns the PID when that process is still alive.</summary>
     int? GetAlivePidFromFile(string pidFilePath);
+
+    /// <summary>Service facts, or null when the service is not installed on this machine.</summary>
+    WindowsServiceInfo? GetWindowsService(string serviceName);
     bool IsPortListening(int port);
     /// <summary>Finds a process whose command line contains the hint (used for the detector).</summary>
     int? FindProcessByCommandLineHint(string hint);
@@ -45,6 +56,8 @@ public interface IComponentController
 
 public interface IMediaMtxApi
 {
+    /// <summary>GET /v3/paths/list — true when Control API on 127.0.0.1:9997 responds.</summary>
+    Task<bool?> IsControlApiReadyAsync(CancellationToken ct = default);
     Task<bool?> IsPathReadyAsync(string pathName, CancellationToken ct = default);
     Task<string?> GetConfiguredSourceAsync(string pathName, CancellationToken ct = default);
     Task<bool> PatchPathSourceAsync(string pathName, string source, CancellationToken ct = default);

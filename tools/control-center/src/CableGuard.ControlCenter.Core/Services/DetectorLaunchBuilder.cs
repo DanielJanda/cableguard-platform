@@ -50,6 +50,31 @@ public static class DetectorLaunchBuilder
             env["CABLEGUARD_MEDIAMTX_RTSP_URL"] =
                 $"rtsp://127.0.0.1:8554/{instance.InputStream}";
 
+            // Optional office input YAML (gitignored) — never embeds camera IP.
+            var officeInput = Path.Combine(config.DetectorRoot, "runtime", "config", $"{instance.Id}.yaml");
+            if (File.Exists(officeInput))
+            {
+                args.Add("--input-config");
+                args.Add(officeInput);
+            }
+
+            var prepared = DetectorRuntimeConfigAdapter.TryPrepareFallSiteConfig(instance, config, out _);
+            if (prepared is not null)
+            {
+                env["CABLEGUARD_PAD_SITE_CONFIG"] = prepared.SiteConfigPath;
+                env["CABLEGUARD_ROI_PROFILE"] = prepared.RoiProfileId;
+                env["CABLEGUARD_ROI_SHA256"] = prepared.RoiSha256;
+            }
+
+            // Office Test Lab: heartbeat always; alarms only when PublishEventCore; never Telegram/relay.
+            if (string.Equals(instance.Id, "fall-office-test", StringComparison.OrdinalIgnoreCase))
+            {
+                env["CABLEGUARD_RUNTIME_STATUS_ENABLED"] = "true";
+                env["CABLEGUARD_TEST_MODE"] = "true";
+                env["CABLEGUARD_EVENT_CORE_HEARTBEAT_ONLY"] =
+                    instance.PublishEventCore ? "false" : "true";
+            }
+
             var debug = forceDebug || instance.DebugOverlay;
             if (debug)
             {
@@ -62,6 +87,7 @@ public static class DetectorLaunchBuilder
 
             var telegramOn = instance.PublishTelegram && (notifications?.TelegramEnabled ?? false);
             env["TELEGRAM_ENABLED"] = telegramOn ? "true" : "false";
+            env["CABLEGUARD_EVENT_CORE_EVENTS"] = instance.PublishEventCore ? "true" : "false";
             // Token/chat stay in Credential Manager / process env set by host — never in LaunchSpec args.
         }
         else if (instance.DetectorType == "barrier")

@@ -16,6 +16,9 @@ internal sealed class FakeMediaMtxApi : IMediaMtxApi
     public List<string> DeleteCalls { get; } = new();
     public bool FailNextAdd { get; set; }
 
+    public Task<bool?> IsControlApiReadyAsync(CancellationToken ct = default) =>
+        Task.FromResult<bool?>(true);
+
     public Task<bool?> IsPathReadyAsync(string pathName, CancellationToken ct = default)
     {
         if (!Sources.TryGetValue(pathName, out var source)) return Task.FromResult<bool?>(false);

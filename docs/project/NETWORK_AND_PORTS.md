@@ -29,7 +29,7 @@ Poznámky:
 
 - Firewall skript otevírá pouze **8080, 8000, 8889 TCP + 8189 UDP** pro Domain/Private profily; Public profil se neotvírá.
 - MediaMTX v1.11.3 binduje `:PORT` na všechna rozhraní; omezení expozice 8554/8888 zajišťuje absence firewall pravidel, ne bind. Doporučení (Phase 9): HLS vypnout v configu, RTSP bind zvážit na `127.0.0.1`, pokud detektor poběží na stejném PC.
-- Dev-only alternativy: Event Core `127.0.0.1:8000` (`start_backend.ps1`), monitor `:5173` (`npm run dev` bez internal-lan).
+- Dev-only alternativa monitoru: `:5173` (`npm run dev` bez internal-lan). Event Core má jediný entrypoint `start_internal_event_core.ps1`.
 
 ## Public internet — currently not used
 
