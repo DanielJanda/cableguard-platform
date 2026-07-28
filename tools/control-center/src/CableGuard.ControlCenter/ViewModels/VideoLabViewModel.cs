@@ -31,6 +31,8 @@ public sealed class VideoLabViewModel : ObservableObject
     private string _resourceText = "NOT AVAILABLE — click Refresh resources";
     private string _abReport = "";
     private bool _soakRunning;
+    private bool _refreshBusy;
+    private int _suppressSelectionRefresh;
 
     public VideoLabViewModel(
         ControlCenterConfig config,
@@ -66,18 +68,32 @@ public sealed class VideoLabViewModel : ObservableObject
         RefreshResourcesCommand = new RelayCommand(RefreshResources);
         RunAbBenchmarkCommand = new AsyncRelayCommand(RunAbBenchmarkAsync);
 
+        // Do not Clear() StreamIds on a timer while ComboBox is TwoWay-bound — that caused
+        // SelectedItem=null → SelectedStreamId setter → RefreshAsync → Clear → stack overflow (0xc00000fd).
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-        _timer.Tick += async (_, _) => { if (!_soakRunning) await RefreshAsync(); };
-        _timer.Start();
+        _timer.Tick += (_, _) =>
+        {
+            if (_soakRunning || _refreshBusy) return;
+            _ = RefreshAsync();
+        };
         StartProbeListener();
-        _ = RefreshAsync();
+        // Defer first refresh until after the window is loaded (avoids binding re-entrancy at startup).
+        Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Loaded, () => _ = RefreshAsync());
+        _timer.Start();
     }
 
     public ObservableCollection<string> StreamIds { get; } = new();
     public string SelectedStreamId
     {
         get => _selectedStreamId;
-        set { if (SetField(ref _selectedStreamId, value)) _ = RefreshAsync(); }
+        set
+        {
+            // ComboBox briefly pushes null when ItemsSource is replaced — ignore that.
+            if (string.IsNullOrWhiteSpace(value)) return;
+            if (!SetField(ref _selectedStreamId, value)) return;
+            if (_suppressSelectionRefresh > 0 || _refreshBusy) return;
+            _ = RefreshAsync();
+        }
     }
     public string MetricsStatus { get => _metricsStatus; private set => SetField(ref _metricsStatus, value); }
     public string LiveSummary { get => _liveSummary; private set => SetField(ref _liveSummary, value); }
@@ -116,57 +132,97 @@ public sealed class VideoLabViewModel : ObservableObject
 
     public async Task RefreshAsync()
     {
+        if (_refreshBusy) return;
+        _refreshBusy = true;
+        try
+        {
+            SyncStreamIds();
+
+            TryLoadProbeFile();
+            var streams = _streams();
+            var stream = streams.Streams.FirstOrDefault(s => s.StreamId == SelectedStreamId)
+                         ?? new LogicalStream { StreamId = SelectedStreamId, MediaMtxPath = SelectedStreamId, CameraId = "" };
+            var metrics = await _collector.CollectAsync(stream, stream.CameraId);
+            if (LastProbe is not null && LastProbe.StreamId == SelectedStreamId)
+                _collector.ApplyBrowserProbe(metrics, LastProbe);
+            LastMetrics = metrics;
+
+            LiveSummary =
+                $"VIDEO HEALTH: {metrics.Health}\n{metrics.HealthDetail}\n\n" +
+                $"TRANSPORT HEALTH\n" +
+                $"  path ready: {metrics.PathReady}\n" +
+                $"  ICE: {metrics.IceState}\n" +
+                $"  received FPS: {metrics.ReceivedFps}\n" +
+                $"  bitrate: {metrics.BitrateKbps}\n" +
+                $"  frames received: {metrics.FramesReceived}\n" +
+                $"  packet loss: {metrics.PacketLoss}\n" +
+                $"  jitter: {metrics.JitterMs}\n" +
+                $"  RTT: {metrics.RttMs}\n" +
+                $"  freezes: {metrics.FreezeCount}\n" +
+                $"  reconnects: {metrics.ReconnectCount}\n" +
+                $"  since last frame: {metrics.SecondsSinceLastFrame}\n" +
+                $"  MediaMTX bytes rx/tx: {metrics.MediaMtxBytesReceived} / {metrics.MediaMtxBytesSent}\n" +
+                $"  readers: {metrics.MediaMtxReaders}\n\n" +
+                $"CAMERA PROFILE\n" +
+                $"  camera: {metrics.SourceCameraId}\n" +
+                $"  codec: {(string.IsNullOrEmpty(metrics.Codec.Note) ? metrics.Codec.ToString() : metrics.Codec.Note)}\n" +
+                $"  resolution: {metrics.ResolutionWidth} x {metrics.ResolutionHeight}\n\n" +
+                $"GLASS-TO-GLASS\n  {metrics.GlassToGlassLatencyMs}\n\n" +
+                $"DETECTOR FRESHNESS (≠ G2G)\n  see panel below";
+
+            G2GDisplay = metrics.GlassToGlassLatencyMs.Kind == MeasurementKind.NotMeasured
+                ? "GLASS-TO-GLASS LATENCY: NOT MEASURED"
+                : $"GLASS-TO-GLASS LATENCY: {metrics.GlassToGlassLatencyMs} (MANUAL)";
+
+            var fresh = DetectorFreshnessProvider.Get("fall-zahradky-upper");
+            DetectorFreshnessText =
+                $"{fresh.Detail}\ninput FPS: {fresh.InputFps}\ninference FPS: {fresh.InferenceFps}\nqueue age: {fresh.QueueAgeMs}\nbacklog: {fresh.BacklogDetected}";
+
+            var (ok, body, detail) = await new MediaMtxMetricsClient(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(2) })
+                .TryGetMetricsAsync();
+            MetricsStatus = ok
+                ? $"MediaMTX metrics OK ({MediaMtxMetricsParser.ListMetricNames(body!).Count} metric names) @ 127.0.0.1:9998"
+                : $"MediaMTX metrics: {detail}";
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"[VIDEO LAB] Refresh failed: {ex.Message}");
+            LiveSummary = $"Refresh error: {ex.Message}";
+        }
+        finally
+        {
+            _refreshBusy = false;
+        }
+    }
+
+    /// <summary>Update stream list without ObservableCollection.Clear (avoids ComboBox null-selection loop).</summary>
+    private void SyncStreamIds()
+    {
         var streams = _streams();
-        StreamIds.Clear();
-        foreach (var s in streams.Streams) StreamIds.Add(s.StreamId);
-        if (StreamIds.Count == 0) StreamIds.Add(_config.ProductionStream);
-        if (!StreamIds.Contains(SelectedStreamId) && StreamIds.Count > 0)
-            SelectedStreamId = StreamIds[0];
+        var desired = streams.Streams.Select(s => s.StreamId).ToList();
+        if (desired.Count == 0) desired.Add(_config.ProductionStream);
 
-        TryLoadProbeFile();
-        var stream = streams.Streams.FirstOrDefault(s => s.StreamId == SelectedStreamId)
-                     ?? new LogicalStream { StreamId = SelectedStreamId, MediaMtxPath = SelectedStreamId, CameraId = "" };
-        var metrics = await _collector.CollectAsync(stream, stream.CameraId);
-        if (LastProbe is not null && LastProbe.StreamId == SelectedStreamId)
-            _collector.ApplyBrowserProbe(metrics, LastProbe);
-        LastMetrics = metrics;
+        for (var i = StreamIds.Count - 1; i >= 0; i--)
+        {
+            if (!desired.Contains(StreamIds[i]))
+                StreamIds.RemoveAt(i);
+        }
+        foreach (var id in desired)
+        {
+            if (!StreamIds.Contains(id))
+                StreamIds.Add(id);
+        }
 
-        LiveSummary =
-            $"VIDEO HEALTH: {metrics.Health}\n{metrics.HealthDetail}\n\n" +
-            $"TRANSPORT HEALTH\n" +
-            $"  path ready: {metrics.PathReady}\n" +
-            $"  ICE: {metrics.IceState}\n" +
-            $"  received FPS: {metrics.ReceivedFps}\n" +
-            $"  bitrate: {metrics.BitrateKbps}\n" +
-            $"  frames received: {metrics.FramesReceived}\n" +
-            $"  packet loss: {metrics.PacketLoss}\n" +
-            $"  jitter: {metrics.JitterMs}\n" +
-            $"  RTT: {metrics.RttMs}\n" +
-            $"  freezes: {metrics.FreezeCount}\n" +
-            $"  reconnects: {metrics.ReconnectCount}\n" +
-            $"  since last frame: {metrics.SecondsSinceLastFrame}\n" +
-            $"  MediaMTX bytes rx/tx: {metrics.MediaMtxBytesReceived} / {metrics.MediaMtxBytesSent}\n" +
-            $"  readers: {metrics.MediaMtxReaders}\n\n" +
-            $"CAMERA PROFILE\n" +
-            $"  camera: {metrics.SourceCameraId}\n" +
-            $"  codec: {(string.IsNullOrEmpty(metrics.Codec.Note) ? metrics.Codec.ToString() : metrics.Codec.Note)}\n" +
-            $"  resolution: {metrics.ResolutionWidth} x {metrics.ResolutionHeight}\n\n" +
-            $"GLASS-TO-GLASS\n  {metrics.GlassToGlassLatencyMs}\n\n" +
-            $"DETECTOR FRESHNESS (≠ G2G)\n  see panel below";
-
-        G2GDisplay = metrics.GlassToGlassLatencyMs.Kind == MeasurementKind.NotMeasured
-            ? "GLASS-TO-GLASS LATENCY: NOT MEASURED"
-            : $"GLASS-TO-GLASS LATENCY: {metrics.GlassToGlassLatencyMs} (MANUAL)";
-
-        var fresh = DetectorFreshnessProvider.Get("fall-zahradky-upper");
-        DetectorFreshnessText =
-            $"{fresh.Detail}\ninput FPS: {fresh.InputFps}\ninference FPS: {fresh.InferenceFps}\nqueue age: {fresh.QueueAgeMs}\nbacklog: {fresh.BacklogDetected}";
-
-        var (ok, body, detail) = await new MediaMtxMetricsClient(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(2) })
-            .TryGetMetricsAsync();
-        MetricsStatus = ok
-            ? $"MediaMTX metrics OK ({MediaMtxMetricsParser.ListMetricNames(body!).Count} metric names) @ 127.0.0.1:9998"
-            : $"MediaMTX metrics: {detail}";
+        if (StreamIds.Count > 0 && !StreamIds.Contains(_selectedStreamId))
+        {
+            _suppressSelectionRefresh++;
+            try
+            {
+                _selectedStreamId = StreamIds[0];
+                OnPropertyChanged(nameof(SelectedStreamId));
+            }
+            finally { _suppressSelectionRefresh--; }
+        }
     }
 
     private void OpenProbe()
