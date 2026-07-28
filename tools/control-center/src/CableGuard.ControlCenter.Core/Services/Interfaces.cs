@@ -17,6 +17,10 @@ public interface IProcessInspector
     bool IsPortListening(int port);
     /// <summary>Finds a process whose command line contains the hint (used for the detector).</summary>
     int? FindProcessByCommandLineHint(string hint);
+    /// <summary>Finds first alive process by ProcessName (e.g. "mediamtx"), ignoring extension.</summary>
+    int? FindProcessByName(string processName);
+    /// <summary>All alive PIDs matching ProcessName (used to refuse multiple MediaMTX instances).</summary>
+    IReadOnlyList<int> FindAllProcessIdsByName(string processName);
     /// <summary>Kills a process tree; verifies the process name matches the expectation first.</summary>
     bool KillProcessTree(int pid, string expectedNameFragment, out string message);
 }

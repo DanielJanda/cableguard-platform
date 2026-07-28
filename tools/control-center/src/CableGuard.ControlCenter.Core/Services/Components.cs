@@ -86,19 +86,43 @@ public sealed class ComponentFactory
             ComponentId.MediaMtx, "MediaMTX", isConfigured: true, logFile,
             statusFunc: async ct =>
             {
-                var pid = _processes.GetAlivePidFromFile(pidFile);
-                var whepStatus = pid is null ? null : await _prober.OptionsStatusCodeAsync(whepUrl, ct);
-                var pathReady = pid is null ? null : await _mediaMtxApi.IsPathReadyAsync(_config.ProductionStream, ct);
+                var live = _processes.FindAllProcessIdsByName("mediamtx");
+                if (live.Count > 1)
+                {
+                    return new ComponentSnapshot(
+                        ComponentId.MediaMtx,
+                        ComponentStatus.Fault,
+                        $"Multiple MediaMTX processes (PIDs {string.Join(", ", live)}). Stop extras before continuing.",
+                        live[0]);
+                }
+
+                var pidFilePid = _processes.GetAlivePidFromFile(pidFile);
+                var decision = MediaMtxLifecycleLogic.Decide(
+                    pidFilePid,
+                    pidFilePid is not null,
+                    live,
+                    portOwnerPid: null,
+                    portOwnerIsMediaMtx: false);
+
+                int? pid = decision.PidToAdopt ?? pidFilePid ?? (live.Count == 1 ? live[0] : null);
+                if (pid is not null)
+                    TryHealPidFile(pidFile, pid.Value);
+
+                var portUp = _processes.IsPortListening(8889) || _processes.IsPortListening(8554);
+                var processAlive = pid is not null || portUp;
+
+                var whepStatus = processAlive ? await _prober.OptionsStatusCodeAsync(whepUrl, ct) : null;
+                var pathReady = processAlive ? await _mediaMtxApi.IsPathReadyAsync(_config.ProductionStream, ct) : null;
                 var probes = new ProbeResults(
-                    ProcessAlive: pid is not null,
+                    ProcessAlive: processAlive,
                     WhepReachable: whepStatus is >= 200 and < 300,
                     PathReady: pathReady);
                 var status = StatusEvaluators.EvaluateMediaMtx(probes);
                 var detail = status switch
                 {
-                    ComponentStatus.Running => $"WHEP ready, path '{_config.ProductionStream}' READY",
+                    ComponentStatus.Running => $"WHEP ready, path '{_config.ProductionStream}' READY (PID {pid?.ToString() ?? "?"})",
                     ComponentStatus.Degraded => $"WHEP up, path '{_config.ProductionStream}' NOT ready (camera source?)",
-                    ComponentStatus.Fault => "Process up but WHEP :8889 not responding",
+                    ComponentStatus.Fault => "Port/process up but WHEP :8889 not responding",
                     _ => "Not running",
                 };
                 return new ComponentSnapshot(ComponentId.MediaMtx, status, detail, pid);
@@ -238,7 +262,10 @@ public sealed class ComponentFactory
 
     private Task<StartStepResult> StopByPidFile(ComponentId id, string pidFile, string expectedName, CancellationToken ct)
     {
-        var pid = _processes.GetAlivePidFromFile(pidFile);
+        var pid = _processes.GetAlivePidFromFile(pidFile)
+                  ?? (expectedName.Contains("mediamtx", StringComparison.OrdinalIgnoreCase)
+                      ? _processes.FindProcessByName("mediamtx")
+                      : null);
         if (pid is null)
             return Task.FromResult(new StartStepResult(id, true, "Not running (no managed PID)."));
         var ok = _processes.KillProcessTree(pid.Value, expectedName, out var msg);
@@ -247,5 +274,19 @@ public sealed class ComponentFactory
             try { File.Delete(pidFile); } catch (IOException) { }
         }
         return Task.FromResult(new StartStepResult(id, ok, msg));
+    }
+
+    private static void TryHealPidFile(string pidFile, int pid)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(pidFile);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            var current = File.Exists(pidFile) ? File.ReadAllText(pidFile).Trim() : "";
+            if (current == pid.ToString()) return;
+            File.WriteAllText(pidFile, pid.ToString());
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }
