@@ -18,14 +18,11 @@ Kanonická sada: [`docs/project/README.md`](docs/project/README.md)
 
 ```powershell
 cd cableguard-platform
-.\.venv\Scripts\Activate.ps1
 # nastav CABLEGUARD_INGEST_API_KEY a CABLEGUARD_KIOSK_API_KEY v .env
-cd backend
-alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+.\scripts\start_internal_event_core.ps1
 ```
 
-Celý interní stack: `.\scripts\start_internal_cableguard.ps1`
+Celý interní stack bez GUI: `.\scripts\start_internal_cableguard.ps1`
 
 ## Role
 
@@ -33,4 +30,4 @@ Celý interní stack: `.\scripts\start_internal_cableguard.ps1`
 |---|---|
 | Event Core, health, acknowledge, WS | YOLO / fall algoritmus (detector repo) |
 | MediaMTX runtime + Admin Studio | Operátorské React UI (monitor repo) |
-| Kanonická projektová dokumentace | Legacy soubory v `docs/*.md` mimo `project/` |
+| Kanonická projektová dokumentace v `docs/project/` | — |

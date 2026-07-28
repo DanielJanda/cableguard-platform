@@ -53,6 +53,7 @@ C:\Users\mega\Documents\cableguard-detector
 | [VIDEO_PIPELINE.md](VIDEO_PIPELINE.md) | Kamera → RTSP → MediaMTX → WHEP/WebRTC → prohlížeč |
 | [EVENT_PIPELINE.md](EVENT_PIPELINE.md) | Event Core: REST, WebSocket, idempotence, persistence |
 | [FALL_DETECTION.md](FALL_DETECTION.md) | Algoritmus pádové detekce, parametry, golden master |
+| [HARDWARE_RELAY.md](HARDWARE_RELAY.md) | USB-4761 mapování kanálů (semafor, bzučák) a write guard |
 | [NETWORK_AND_PORTS.md](NETWORK_AND_PORTS.md) | Autoritativní tabulka portů a bindů |
 | [OPERATIONS.md](OPERATIONS.md) | Provozní runbook: start/stop/status/diagnostika |
 | [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md) | Git workflow, Lovable, deployment z main |
