@@ -11,11 +11,14 @@ public static class BuildInfo
     public static string Branch { get; private set; } = "unknown";
     public static string CommitSha { get; private set; } = "unknown";
     public static string BuildTimestamp { get; private set; } = "unknown";
-    public static string Summary => $"branch={Branch}  sha={CommitSha}  built={BuildTimestamp}";
+    public static string ExecutablePath { get; private set; } = "unknown";
+    public static string Summary =>
+        $"branch={Branch}  sha={CommitSha}  built={BuildTimestamp}{Environment.NewLine}exe={ExecutablePath}";
 
     public static void Initialize(ControlCenterConfig config)
     {
-        BuildTimestamp = File.GetLastWriteTimeUtc(Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location)
+        ExecutablePath = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
+        BuildTimestamp = File.GetLastWriteTimeUtc(ExecutablePath)
             .ToLocalTime()
             .ToString("yyyy-MM-dd HH:mm:ss");
 
