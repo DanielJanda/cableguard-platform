@@ -21,6 +21,26 @@ public sealed class WindowsProcessInspector : IProcessInspector
         catch (IOException) { return null; }
     }
 
+    public WindowsServiceInfo? GetWindowsService(string serviceName)
+    {
+        if (string.IsNullOrWhiteSpace(serviceName)) return null;
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                $"SELECT Name, State, StartMode, DelayedAutoStart FROM Win32_Service WHERE Name = '{serviceName.Replace("'", "''")}'");
+            foreach (var obj in searcher.Get())
+            {
+                return new WindowsServiceInfo(
+                    obj["Name"]?.ToString() ?? serviceName,
+                    obj["State"]?.ToString() ?? "Unknown",
+                    obj["StartMode"]?.ToString() ?? "Unknown",
+                    obj["DelayedAutoStart"] is bool delayed && delayed);
+            }
+        }
+        catch (ManagementException) { }
+        return null;
+    }
+
     public bool IsPortListening(int port)
     {
         var listeners = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();

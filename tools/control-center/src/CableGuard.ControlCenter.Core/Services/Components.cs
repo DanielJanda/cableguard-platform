@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CableGuard.ControlCenter.Core.Models;
 
 namespace CableGuard.ControlCenter.Core.Services;
@@ -74,6 +75,9 @@ public sealed class ComponentFactory
         CreateDetector(),
     };
 
+    /// <summary>Windows service that owns MediaMTX in the permanent local deployment.</summary>
+    public const string MediaMtxServiceName = "CableGuardMediaMTX";
+
     public IComponentController CreateMediaMtx()
     {
         var pidFile = Path.Combine(_config.PlatformRoot, "runtime", "mediamtx", "mediamtx.pid");
@@ -86,13 +90,18 @@ public sealed class ComponentFactory
             ComponentId.MediaMtx, "MediaMTX", isConfigured: true, logFile,
             statusFunc: async ct =>
             {
+                var service = _processes.GetWindowsService(MediaMtxServiceName);
+                var serviceText = service is null
+                    ? "service=NOT INSTALLED"
+                    : $"service={service.State.ToUpperInvariant()} ({service.StartupDescription})";
+
                 var live = _processes.FindAllProcessIdsByName("mediamtx");
                 if (live.Count > 1)
                 {
                     return new ComponentSnapshot(
                         ComponentId.MediaMtx,
                         ComponentStatus.Fault,
-                        $"Multiple MediaMTX processes (PIDs {string.Join(", ", live)}). Stop extras before continuing.",
+                        $"{serviceText} · process=FAULT: {live.Count} instances (PIDs {string.Join(", ", live)}). Stop extras before continuing.",
                         live[0]);
                 }
 
@@ -110,25 +119,65 @@ public sealed class ComponentFactory
 
                 var portUp = _processes.IsPortListening(8889) || _processes.IsPortListening(8554);
                 var processAlive = pid is not null || portUp;
+                var processText = processAlive
+                    ? $"process=RUNNING (PID {pid?.ToString() ?? "?"})"
+                    : "process=STOPPED";
 
                 var whepStatus = processAlive ? await _prober.OptionsStatusCodeAsync(whepUrl, ct) : null;
-                var pathReady = processAlive ? await _mediaMtxApi.IsPathReadyAsync(_config.ProductionStream, ct) : null;
+                var apiReady = whepStatus is >= 200 and < 300;
+
+                var expected = ExpectedMediaMtxPaths();
+                var notReady = new List<string>();
+                foreach (var path in expected)
+                {
+                    var ready = processAlive && await _mediaMtxApi.IsPathReadyAsync(path, ct) == true;
+                    if (!ready) notReady.Add(path);
+                }
+                var pathsReady = expected.Count > 0 && notReady.Count == 0;
+                var pathsText = expected.Count == 0
+                    ? "paths=NONE CONFIGURED"
+                    : pathsReady
+                        ? $"paths=READY ({expected.Count}/{expected.Count})"
+                        : $"paths=NOT READY ({expected.Count - notReady.Count}/{expected.Count}: {string.Join(", ", notReady)})";
+
                 var probes = new ProbeResults(
                     ProcessAlive: processAlive,
-                    WhepReachable: whepStatus is >= 200 and < 300,
-                    PathReady: pathReady);
+                    WhepReachable: apiReady,
+                    PathReady: pathsReady);
                 var status = StatusEvaluators.EvaluateMediaMtx(probes);
-                var detail = status switch
-                {
-                    ComponentStatus.Running => $"WHEP ready, path '{_config.ProductionStream}' READY (PID {pid?.ToString() ?? "?"})",
-                    ComponentStatus.Degraded => $"WHEP up, path '{_config.ProductionStream}' NOT ready (camera source?)",
-                    ComponentStatus.Fault => "Port/process up but WHEP :8889 not responding",
-                    _ => "Not running",
-                };
+
+                // A service that is installed but not running must never read as healthy.
+                if (service is not null && !service.IsRunning && status == ComponentStatus.Running)
+                    status = ComponentStatus.Degraded;
+
+                var detail = string.Join(
+                    " · ",
+                    serviceText,
+                    processText,
+                    apiReady ? "api=READY" : "api=OFFLINE",
+                    pathsText);
                 return new ComponentSnapshot(ComponentId.MediaMtx, status, detail, pid);
             },
             startFunc: ct => RunScriptAsStep(ComponentId.MediaMtx, startScript, ct),
             stopFunc: ct => RunScriptAsStep(ComponentId.MediaMtx, stopScript, ct));
+    }
+
+    /// <summary>MediaMTX paths that must be READY: every enabled logical stream.</summary>
+    private IReadOnlyList<string> ExpectedMediaMtxPaths()
+    {
+        try
+        {
+            var streams = StreamsService.Load(_config.StreamsJsonPath).Streams
+                .Where(s => s.Enabled && !string.IsNullOrWhiteSpace(s.MediaMtxPath))
+                .Select(s => s.MediaMtxPath)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return streams.Count > 0 ? streams : new List<string> { _config.ProductionStream };
+        }
+        catch (JsonException)
+        {
+            return new List<string> { _config.ProductionStream };
+        }
     }
 
     public IComponentController CreateEventCore()
