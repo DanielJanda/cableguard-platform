@@ -17,6 +17,13 @@ public static class RoiProfileService
         {
             if (p.X < 0 || p.Y < 0) errors.Add($"ROI '{profile.Id}': negative coordinates not allowed.");
         }
+        if (profile.SourceWidth < 0 || profile.SourceHeight < 0)
+            errors.Add($"ROI '{profile.Id}': source_width/height must be >= 0.");
+        if (!string.IsNullOrWhiteSpace(profile.ActivationState) &&
+            !string.Equals(profile.ActivationState, "saved", StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add($"ROI '{profile.Id}': activation_state must be 'saved' (ACTIVE is detector runtime only).");
+        }
         return errors;
     }
 
@@ -24,6 +31,8 @@ public static class RoiProfileService
     {
         var profile = JsonSerializer.Deserialize<RoiProfile>(File.ReadAllText(filePath))
                       ?? throw new InvalidOperationException("Empty ROI profile.");
+        if (string.IsNullOrWhiteSpace(profile.ActivationState))
+            profile.ActivationState = "saved";
         var errors = Validate(profile);
         if (errors.Count > 0) throw new InvalidOperationException(string.Join("; ", errors));
         return profile;
@@ -31,6 +40,7 @@ public static class RoiProfileService
 
     public static void Save(RoiProfile profile, string filePath)
     {
+        profile.ActivationState = "saved";
         var errors = Validate(profile);
         if (errors.Count > 0) throw new InvalidOperationException(string.Join("; ", errors));
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);

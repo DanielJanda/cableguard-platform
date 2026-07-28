@@ -46,7 +46,15 @@ public sealed class RoiProfile
     [JsonPropertyName("display_name")] public string DisplayName { get; set; } = "";
     [JsonPropertyName("stream_id")] public string StreamId { get; set; } = "";
     [JsonPropertyName("detector_type")] public string DetectorType { get; set; } = "fall";
+    /// <summary>fall: single polygon. barrier: person | safety_bar | exclude (matches zahradky_safety app.py).</summary>
+    [JsonPropertyName("roi_role")] public string RoiRole { get; set; } = "fall";
     [JsonPropertyName("points")] public List<RoiPoint> Points { get; set; } = new();
+    /// <summary>Pixel width of the snapshot used when drawing points.</summary>
+    [JsonPropertyName("source_width")] public int SourceWidth { get; set; }
+    /// <summary>Pixel height of the snapshot used when drawing points.</summary>
+    [JsonPropertyName("source_height")] public int SourceHeight { get; set; }
+    /// <summary>Always "saved" for Admin Studio profiles — never claim ACTIVE until detector loads/restarts.</summary>
+    [JsonPropertyName("activation_state")] public string ActivationState { get; set; } = "saved";
     [JsonPropertyName("is_production")] public bool IsProduction { get; set; }
 }
 

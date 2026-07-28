@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using CableGuard.ControlCenter.Core.Models;
 using CableGuard.ControlCenter.Core.Services;
 using CableGuard.ControlCenter.ViewModels;
 
@@ -53,7 +54,12 @@ public partial class App : Application
         var notificationsVm = new NotificationsViewModel(config, logger, credentials);
         var detectorsVm = new DetectorsViewModel(config, logger, detectorManager,
             () => StreamsService.Load(config.StreamsJsonPath), () => notificationsVm.Document);
-        var calibrationVm = new CalibrationViewModel(config, logger);
+        var mediaMtx = components.First(c => c.Id == ComponentId.MediaMtx);
+        var calibrationVm = new CalibrationViewModel(
+            config, logger,
+            () => StreamsService.Load(config.StreamsJsonPath),
+            () => camerasVm.Registry,
+            mediaMtx);
         var hardwareVm = new HardwareViewModel(logger, hardware);
         var scenariosVm = new ScenariosViewModel(config, logger, detectorsVm, notificationsVm, hardwareVm);
         var videoLabCollector = new VideoLabCollector(config, mediaMtxApi, http);

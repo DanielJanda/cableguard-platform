@@ -331,26 +331,71 @@
 
       <TabItem Header="Kalibrace ROI" DataContext="{Binding Calibration}">
         <Grid Margin="16">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="280"/></Grid.ColumnDefinitions>
-          <Border Background="#FF0E1014" CornerRadius="4" Margin="0,0,12,0"
-                  MouseLeftButtonDown="RoiCanvas_MouseLeftButtonDown" Cursor="Cross">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="320"/></Grid.ColumnDefinitions>
+          <Border Background="#FF0E1014" CornerRadius="4" Margin="0,0,12,0" Cursor="Cross">
             <Grid>
-              <TextBlock Text="Klikni sem pro body ROI polygonu&#x0a;(živý snímek = Náhled kamery v prohlížeči;&#x0a;plátno je kalibrační 1280×720)"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FF8A93A0"
-                         TextAlignment="Center"/>
-              <Canvas x:Name="RoiCanvas" ClipToBounds="True"/>
+              <Image x:Name="RoiFrameImage"
+                     Source="{Binding FrameImage}"
+                     Stretch="Uniform"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch"/>
+              <TextBlock Text="{Binding FrameHint}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Foreground="#FF8A93A0" TextAlignment="Center" TextWrapping="Wrap" Margin="24">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding HasFrame}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <Canvas x:Name="RoiCanvas" Background="Transparent"
+                      MouseLeftButtonDown="RoiCanvas_MouseLeftButtonDown"
+                      ClipToBounds="True"
+                      SizeChanged="RoiCanvas_SizeChanged"/>
             </Grid>
           </Border>
-          <StackPanel Grid.Column="1">
-            <TextBlock Text="Profil ROI" FontWeight="SemiBold"/>
-            <TextBox Text="{Binding ProfileId}" Margin="0,4,0,8"/>
-            <TextBlock Text="{Binding Status}" Foreground="{StaticResource FgMuted}" Margin="0,0,0,8"/>
-            <TextBlock Text="{Binding PointsText}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
-            <Button Content="Reset" Command="{Binding ResetCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
-            <Button Content="Celý snímek" Command="{Binding FullFrameCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
-            <Button Content="Načíst" Command="{Binding LoadCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
-            <Button Content="Uložit jako…" Command="{Binding SaveCommand}" Background="#FF2E7D32" HorizontalAlignment="Stretch"/>
-          </StackPanel>
+          <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <TextBlock Text="Zdroj (stream / kamera)" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding StreamIds}" SelectedItem="{Binding SelectedStreamId}" Margin="0,4,0,4"/>
+              <TextBlock Text="{Binding CameraHint}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,8"/>
+              <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#FFFFCC80" Margin="0,0,0,8"
+                         Text="ROI potřebuje jen MediaMTX (stream kamery). START PRODUKCE (detektor/monitor) není nutný."/>
+              <Button Content="Spustit MediaMTX + načíst snímek" Command="{Binding EnsureMediaMtxCommand}" Background="#FF3A5A8C"
+                      Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+              <Button Content="Načíst snímek znovu" Command="{Binding GrabFrameCommand}"
+                      Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+              <Button Content="Živý náhled (prohlížeč)" Command="{Binding PreviewStreamCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+              <Button Content="Obnovit seznamy" Command="{Binding RefreshSourcesCommand}" Margin="0,0,0,12" HorizontalAlignment="Stretch"/>
+              <TextBlock Text="{Binding FrameHint}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,12"/>
+
+              <TextBlock Text="Typ detektoru" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding DetectorTypes}" SelectedItem="{Binding DetectorType}" Margin="0,4,0,8"/>
+              <TextBlock Text="Role ROI (zábrany = 3 polygony)" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding RoiRoles}" SelectedItem="{Binding RoiRole}" Margin="0,4,0,8"/>
+              <TextBlock Text="fall = 1 polygon · barrier: person / safety_bar / exclude (jako ROI_* v zahradky_safety/app.py)"
+                         TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" FontSize="11" Margin="0,0,0,12"/>
+
+              <TextBlock Text="Uložený profil" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding ProfileIds}" SelectedItem="{Binding ProfileId}" IsEditable="True"
+                        Margin="0,4,0,4"/>
+              <TextBox Text="{Binding ProfileId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+              <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,8"/>
+              <TextBlock Text="Uložený profil = SAVED (soubor). ACTIVE = až po aplikaci v detektoru — Admin Studio ACTIVE nepřepisuje."
+                         TextWrapping="Wrap" FontSize="11" Foreground="#FFFFCC80" Margin="0,0,0,8"/>
+              <TextBlock Text="{Binding PointsText}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
+              <Button Content="Zpět (poslední bod)" Command="{Binding UndoPointCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+              <Button Content="Reset bodů" Command="{Binding ResetCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+              <Button Content="Celý snímek" Command="{Binding FullFrameCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+              <Button Content="Načíst profil" Command="{Binding LoadCommand}" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+              <Button Content="Uložit" Command="{Binding SaveCommand}" Background="#FF2E7D32" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+          </ScrollViewer>
         </Grid>
       </TabItem>
 
@@ -421,7 +466,9 @@
             </Border>
 
             <TextBlock Text="{Binding G2GDisplay}" FontSize="16" FontWeight="Bold" Foreground="#FFFFCC80" Margin="0,0,0,8"/>
-            <TextBlock Text="Test latence (ruční)" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="Ruční měření glass-to-glass latence" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource FgMuted}" Margin="0,4,0,8"
+                       Text="1) Vyber stream · 2) Ověř MediaMTX READY · 3) Otevři referenční vzor · 4) Vzor do záběru kamery · 5) Otevři přijatý stream · 6) Porovnej časy · 7) Zadej ms · 8) Ulož. RTT/jitter/FPS/bitrate ≠ G2G. Bez fyzické reference = NOT MEASURED. Po změně profilu streamu = OUTDATED."/>
             <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
               <Button Content="Otevřít vzor času" Command="{Binding OpenLatencyPatternCommand}"/>
               <TextBox Width="100" Text="{Binding ManualLatencyText}" Margin="8,0"/>

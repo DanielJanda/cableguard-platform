@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using CableGuard.ControlCenter.Core.Models;
 using CableGuard.ControlCenter.Core.Services;
 
@@ -11,36 +13,144 @@ public sealed class CalibrationViewModel : ObservableObject
 {
     private readonly ControlCenterConfig _config;
     private readonly ControlCenterLogger _logger;
+    private readonly Func<StreamsDocument> _streams;
+    private readonly Func<CameraRegistryDocument> _cameras;
+    private readonly IComponentController? _mediaMtx;
+
     private string _profileId = "office-fall-test";
     private string _pointsText = "";
-    private string _status = "Klikáním do plátna přidávej body polygonu (min. 3).";
+    private string _status = "Načti snímek kamery, pak klikáním do obrazu přidej body polygonu (min. 3).";
+    private string _selectedStreamId = "zahradky-horni-stanice";
+    private string _detectorType = "fall";
+    private string _roiRole = "fall";
+    private string _cameraHint = "";
+    private string _frameHint = "Snímek zatím nenačten — klikni „Načíst snímek“.";
+    private BitmapImage? _frameImage;
+    private int _frameWidth = 1280;
+    private int _frameHeight = 720;
+    private bool _suppressSuggest;
+    private bool _grabBusy;
 
-    public CalibrationViewModel(ControlCenterConfig config, ControlCenterLogger logger)
+    public CalibrationViewModel(
+        ControlCenterConfig config,
+        ControlCenterLogger logger,
+        Func<StreamsDocument> streams,
+        Func<CameraRegistryDocument> cameras,
+        IComponentController? mediaMtx = null)
     {
-        _config = config; _logger = logger;
+        _config = config;
+        _logger = logger;
+        _streams = streams;
+        _cameras = cameras;
+        _mediaMtx = mediaMtx;
         Points = new ObservableCollection<RoiPoint>();
+        Points.CollectionChanged += (_, _) => PointsChanged?.Invoke(this, EventArgs.Empty);
         ResetCommand = new RelayCommand(() => { Points.Clear(); Rebuild(); });
+        UndoPointCommand = new RelayCommand(() =>
+        {
+            if (Points.Count == 0) return;
+            Points.RemoveAt(Points.Count - 1);
+            Rebuild();
+        });
         FullFrameCommand = new RelayCommand(() =>
         {
             Points.Clear();
-            Points.Add(new(0, 0)); Points.Add(new(1280, 0)); Points.Add(new(1280, 720)); Points.Add(new(0, 720));
+            Points.Add(new(0, 0));
+            Points.Add(new(FrameWidth, 0));
+            Points.Add(new(FrameWidth, FrameHeight));
+            Points.Add(new(0, FrameHeight));
             Rebuild();
         });
         SaveCommand = new RelayCommand(Save);
         LoadCommand = new RelayCommand(Load);
+        PreviewStreamCommand = new RelayCommand(PreviewStream);
+        RefreshSourcesCommand = new RelayCommand(RefreshSources);
+        GrabFrameCommand = new AsyncRelayCommand(GrabFrameAsync, () => !_grabBusy);
+        EnsureMediaMtxCommand = new AsyncRelayCommand(EnsureMediaMtxAsync);
         CanvasClickCommand = new RelayCommand<Point?>(AddPoint);
+        EnsureBarrierTemplates();
+        RefreshSources();
         ReloadList();
+        UpdateCameraHint();
+        System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Background,
+            () => _ = GrabFrameAsync());
     }
+
+    /// <summary>Raised when polygon points change — MainWindow redraws overlay.</summary>
+    public event EventHandler? PointsChanged;
 
     public ObservableCollection<RoiPoint> Points { get; }
     public ObservableCollection<string> ProfileIds { get; } = new();
-    public string ProfileId { get => _profileId; set => SetField(ref _profileId, value); }
+    public ObservableCollection<string> StreamIds { get; } = new();
+    public IReadOnlyList<string> DetectorTypes { get; } = new[] { "fall", "barrier" };
+    public ObservableCollection<string> RoiRoles { get; } = new();
+
+    public string ProfileId
+    {
+        get => _profileId;
+        set { if (SetField(ref _profileId, value)) TryAutoLoad(); }
+    }
+    public string SelectedStreamId
+    {
+        get => _selectedStreamId;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            if (!SetField(ref _selectedStreamId, value)) return;
+            UpdateCameraHint();
+            _ = GrabFrameAsync();
+        }
+    }
+    public string DetectorType
+    {
+        get => _detectorType;
+        set
+        {
+            if (SetField(ref _detectorType, value))
+            {
+                RebuildRoiRoles();
+                if (!_suppressSuggest) SuggestProfileId();
+            }
+        }
+    }
+    public string RoiRole
+    {
+        get => _roiRole;
+        set
+        {
+            if (SetField(ref _roiRole, value))
+            {
+                if (!_suppressSuggest) SuggestProfileId();
+            }
+        }
+    }
     public string PointsText { get => _pointsText; private set => SetField(ref _pointsText, value); }
     public string Status { get => _status; private set => SetField(ref _status, value); }
+    public string CameraHint { get => _cameraHint; private set => SetField(ref _cameraHint, value); }
+    public string FrameHint { get => _frameHint; private set => SetField(ref _frameHint, value); }
+    public BitmapImage? FrameImage
+    {
+        get => _frameImage;
+        private set
+        {
+            if (SetField(ref _frameImage, value))
+                OnPropertyChanged(nameof(HasFrame));
+        }
+    }
+    public bool HasFrame => FrameImage is not null;
+    public int FrameWidth { get => _frameWidth; private set => SetField(ref _frameWidth, value); }
+    public int FrameHeight { get => _frameHeight; private set => SetField(ref _frameHeight, value); }
+
     public RelayCommand ResetCommand { get; }
+    public RelayCommand UndoPointCommand { get; }
     public RelayCommand FullFrameCommand { get; }
     public RelayCommand SaveCommand { get; }
     public RelayCommand LoadCommand { get; }
+    public RelayCommand PreviewStreamCommand { get; }
+    public RelayCommand RefreshSourcesCommand { get; }
+    public AsyncRelayCommand GrabFrameCommand { get; }
+    public AsyncRelayCommand EnsureMediaMtxCommand { get; }
     public RelayCommand<Point?> CanvasClickCommand { get; }
 
     public void AddPoint(Point? p)
@@ -50,10 +160,172 @@ public sealed class CalibrationViewModel : ObservableObject
         Rebuild();
     }
 
+    public string ResolveMediaMtxPath()
+    {
+        var stream = _streams().Streams.FirstOrDefault(s => s.StreamId == SelectedStreamId);
+        return !string.IsNullOrWhiteSpace(stream?.MediaMtxPath) ? stream!.MediaMtxPath : SelectedStreamId;
+    }
+
+    private async Task EnsureMediaMtxAsync()
+    {
+        if (_mediaMtx is null)
+        {
+            Status = "MediaMTX controller není k dispozici.";
+            return;
+        }
+
+        FrameHint = "Kontroluji MediaMTX…";
+        var snap = await _mediaMtx.GetStatusAsync();
+        if (snap.Status is ComponentStatus.Running or ComponentStatus.Degraded)
+        {
+            FrameHint = $"MediaMTX už běží ({snap.Detail}). Načítám snímek…";
+            await GrabFrameAsync();
+            return;
+        }
+
+        FrameHint = "Spouštím MediaMTX (stačí pro ROI — detektor/monitor nejsou potřeba)…";
+        _logger.Info("[ROI] Ensure MediaMTX start");
+        var result = await _mediaMtx.StartAsync();
+        if (!result.Success)
+        {
+            FrameHint = $"MediaMTX start selhal: {result.Message}";
+            Status = FrameHint;
+            _logger.Error($"[ROI] MediaMTX start failed: {result.Message}");
+            return;
+        }
+
+        // Brief wait for RTSP to bind.
+        for (var i = 0; i < 8; i++)
+        {
+            await Task.Delay(500);
+            snap = await _mediaMtx.GetStatusAsync();
+            if (snap.Status is ComponentStatus.Running or ComponentStatus.Degraded or ComponentStatus.Fault)
+                break;
+        }
+
+        FrameHint = $"MediaMTX: {snap.Detail}. Načítám snímek…";
+        await GrabFrameAsync();
+    }
+
+    private async Task GrabFrameAsync()
+    {
+        if (_grabBusy) return;
+        _grabBusy = true;
+        GrabFrameCommand.RaiseCanExecuteChanged();
+        var path = ResolveMediaMtxPath();
+        FrameHint = $"Načítám snímek z rtsp://127.0.0.1:8554/{path} …";
+        Status = FrameHint;
+        try
+        {
+            var result = await StreamFrameGrabber.GrabJpegAsync(path).ConfigureAwait(true);
+            if (!result.Ok || result.JpegBytes is null)
+            {
+                FrameImage = null;
+                FrameHint = result.Message +
+                            "\n\nROI potřebuje jen MediaMTX (ne celý START PRODUKCE). " +
+                            "Klikni „Spustit MediaMTX“ výše, nebo na Přehledu Start u MediaMTX.";
+                Status = result.Message;
+                _logger.Warn($"[ROI] Frame grab failed: {result.Message}");
+                return;
+            }
+
+            var bmp = new BitmapImage();
+            using (var ms = new MemoryStream(result.JpegBytes))
+            {
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.StreamSource = ms;
+                bmp.EndInit();
+                bmp.Freeze();
+            }
+            FrameWidth = bmp.PixelWidth > 0 ? bmp.PixelWidth : 1280;
+            FrameHeight = bmp.PixelHeight > 0 ? bmp.PixelHeight : 720;
+            FrameImage = bmp;
+            FrameHint = $"Snímek {FrameWidth}×{FrameHeight} · {path} — klikáním kresli polygon.";
+            Status = FrameHint;
+            _logger.Info($"[ROI] Frame grabbed {FrameWidth}x{FrameHeight} from {path}");
+            PointsChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            FrameImage = null;
+            FrameHint = ex.Message;
+            Status = ex.Message;
+            _logger.Error($"[ROI] Frame grab exception: {ex.Message}");
+        }
+        finally
+        {
+            _grabBusy = false;
+            GrabFrameCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     private void Rebuild()
     {
         PointsText = string.Join("\n", Points.Select((pt, i) => $"{i + 1}: {pt.X}, {pt.Y}"));
-        Status = Points.Count < 3 ? $"Bodů: {Points.Count} (potřeba ≥3)" : $"Bodů: {Points.Count} — ready to save";
+        Status = Points.Count < 3
+            ? $"Bodů: {Points.Count} (potřeba ≥3) · {DetectorType}/{RoiRole} · {FrameWidth}×{FrameHeight}"
+            : $"Bodů: {Points.Count} — připraveno k uložení · {DetectorType}/{RoiRole}";
+    }
+
+    private void RefreshSources()
+    {
+        var docs = _streams();
+        StreamIds.Clear();
+        foreach (var s in docs.Streams) StreamIds.Add(s.StreamId);
+        if (StreamIds.Count == 0)
+        {
+            StreamIds.Add(_config.ProductionStream);
+            StreamIds.Add("office-test");
+        }
+        if (!StreamIds.Contains(SelectedStreamId) && StreamIds.Count > 0)
+            SelectedStreamId = StreamIds[0];
+        UpdateCameraHint();
+        RebuildRoiRoles();
+    }
+
+    private void RebuildRoiRoles()
+    {
+        RoiRoles.Clear();
+        if (DetectorType == "barrier")
+        {
+            RoiRoles.Add("person");
+            RoiRoles.Add("safety_bar");
+            RoiRoles.Add("exclude");
+        }
+        else
+        {
+            RoiRoles.Add("fall");
+        }
+        if (!RoiRoles.Contains(RoiRole))
+            RoiRole = RoiRoles[0];
+    }
+
+    private void SuggestProfileId()
+    {
+        var stream = SelectedStreamId.Replace("zahradky-", "").Replace("-stanice", "");
+        ProfileId = DetectorType == "barrier"
+            ? $"barrier-{stream}-{RoiRole}"
+            : $"fall-{stream}";
+    }
+
+    private void UpdateCameraHint()
+    {
+        var stream = _streams().Streams.FirstOrDefault(s => s.StreamId == SelectedStreamId);
+        var cam = stream is null
+            ? null
+            : _cameras().Cameras.FirstOrDefault(c => c.CameraId == stream.CameraId);
+        CameraHint = cam is null
+            ? $"Stream „{SelectedStreamId}“ — kamera není namapovaná. Snímek bere lokální MediaMTX RTSP."
+            : $"Kamera: {cam.DisplayName} ({cam.Host}) · stream {SelectedStreamId}";
+    }
+
+    private void PreviewStream()
+    {
+        var path = ResolveMediaMtxPath();
+        var url = _config.PreviewUrl(path);
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        _logger.Info($"[ROI] Preview stream {SelectedStreamId} path={path} → {url}");
     }
 
     private void Save()
@@ -61,20 +333,43 @@ public sealed class CalibrationViewModel : ObservableObject
         var profile = new RoiProfile
         {
             Id = ProfileId.Trim(),
-            DisplayName = ProfileId.Trim(),
-            DetectorType = "fall",
+            DisplayName = $"{DetectorType}/{RoiRole} @ {SelectedStreamId}",
+            StreamId = SelectedStreamId,
+            DetectorType = DetectorType,
+            RoiRole = RoiRole,
             Points = Points.ToList(),
+            SourceWidth = FrameWidth,
+            SourceHeight = FrameHeight,
+            ActivationState = "saved",
         };
         try
         {
             RoiProfileService.Save(profile, RuntimeConfigPaths.RoiFile(_config, profile.Id));
-            _logger.Info($"[ROI] Saved profile {profile.Id} ({profile.Points.Count} points)");
-            Status = $"Uloženo: {profile.Id}";
+            _logger.Info($"[ROI] SAVED {profile.Id} type={profile.DetectorType} role={profile.RoiRole} stream={profile.StreamId} pts={profile.Points.Count} {profile.SourceWidth}x{profile.SourceHeight} (not ACTIVE)");
+            Status = $"SAVED profil: {profile.Id} ({profile.SourceWidth}×{profile.SourceHeight}) — NENÍ ACTIVE v detektoru, dokud se explicitně neaplikuje/restartuje.";
             ReloadList();
+            if (DetectorType == "barrier")
+            {
+                MessageBox.Show(
+                    "ROI zábran uloženo jako SAVED (runtime/config/roi/).\n\n" +
+                    "Není ACTIVE v běžícím detektoru.\n\n" +
+                    "Produkční zábrany (zahradky_safety/app.py) mají 3 polygony:\n" +
+                    "• person (ROI_PERSON)\n• safety_bar (ROI_SAFETY_BAR)\n• exclude (ROI_EXCLUDE_PERSON)\n\n" +
+                    "Admin Studio nepíše do app.py / YAML.",
+                    "ROI zábrany — SAVED", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"Profil „{profile.Id}“ uložen jako SAVED.\n" +
+                    $"Rozlišení snímku: {profile.SourceWidth}×{profile.SourceHeight}\n\n" +
+                    "ACTIVE ROI v detektoru se nemění, dokud konfiguraci neaplikuješ a detektor nerestartuješ.",
+                    "ROI — SAVED", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "ROI Save", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, "Uložení ROI", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -89,10 +384,39 @@ public sealed class CalibrationViewModel : ObservableObject
                     MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
         }
-        Points.Clear();
-        foreach (var p in profile.Points) Points.Add(p);
-        Rebuild();
-        Status = $"Načteno: {profile.Id}";
+        ApplyProfile(profile);
+    }
+
+    private void TryAutoLoad()
+    {
+        if (_suppressSuggest) return;
+        var path = RuntimeConfigPaths.RoiFile(_config, ProfileId.Trim());
+        if (!File.Exists(path)) return;
+        try { ApplyProfile(RoiProfileService.Load(path)); }
+        catch { /* ignore bad file while typing id */ }
+    }
+
+    private void ApplyProfile(RoiProfile profile)
+    {
+        _suppressSuggest = true;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(profile.StreamId))
+                SelectedStreamId = profile.StreamId;
+            if (!string.IsNullOrWhiteSpace(profile.DetectorType))
+                DetectorType = profile.DetectorType;
+            if (!string.IsNullOrWhiteSpace(profile.RoiRole))
+                RoiRole = profile.RoiRole;
+            ProfileId = profile.Id;
+            Points.Clear();
+            foreach (var p in profile.Points) Points.Add(p);
+            Rebuild();
+            Status = $"Načteno: {profile.Id}";
+        }
+        finally
+        {
+            _suppressSuggest = false;
+        }
     }
 
     private void ReloadList()
@@ -100,6 +424,36 @@ public sealed class CalibrationViewModel : ObservableObject
         ProfileIds.Clear();
         foreach (var p in RoiProfileService.ListAll(_config.RoiDir))
             ProfileIds.Add(p.Id);
+    }
+
+    /// <summary>Seed editable templates mirroring barrier multi-ROI from zahradky_safety/app.py (not live algorithm).</summary>
+    private void EnsureBarrierTemplates()
+    {
+        Directory.CreateDirectory(_config.RoiDir);
+        void Seed(string id, string role, (int x, int y)[] pts)
+        {
+            var path = RuntimeConfigPaths.RoiFile(_config, id);
+            if (File.Exists(path)) return;
+            var profile = new RoiProfile
+            {
+                Id = id,
+                DisplayName = $"Barrier template {role}",
+                StreamId = "zahradky-horni-stanice",
+                DetectorType = "barrier",
+                RoiRole = role,
+                IsProduction = false,
+                SourceWidth = 1920,
+                SourceHeight = 1080,
+                ActivationState = "saved",
+                Points = pts.Select(p => new RoiPoint(p.x, p.y)).ToList(),
+            };
+            try { RoiProfileService.Save(profile, path); }
+            catch { /* ignore */ }
+        }
+        // Values from zahradky_safety/app.py (documentation snapshot for editor templates).
+        Seed("barrier-horni-person", "person", new[] { (16, 229), (1780, 495), (1821, 699), (46, 1016) });
+        Seed("barrier-horni-safety_bar", "safety_bar", new[] { (3, 62), (1810, 402), (1809, 543), (19, 420) });
+        Seed("barrier-horni-exclude", "exclude", new[] { (1115, 268), (1124, 339), (1201, 346), (1202, 284) });
     }
 }
 
@@ -117,6 +471,7 @@ public sealed class RelayCommand<T> : ICommand
     }
     public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
+
 
 public sealed class NotificationsViewModel : ObservableObject
 {
