@@ -35,25 +35,102 @@
       <Setter Property="Padding" Value="6,4"/>
     </Style>
     <Style TargetType="ComboBox">
-      <Setter Property="Background" Value="{StaticResource BgInput}"/>
+      <Setter Property="Background" Value="#FF2C313A"/>
       <Setter Property="Foreground" Value="#FFEEF1F5"/>
-      <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}"/>
-      <Setter Property="Padding" Value="6,4"/>
+      <Setter Property="BorderBrush" Value="#FF4A5260"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="8,6"/>
+      <Setter Property="MinHeight" Value="32"/>
+      <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+      <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <ToggleButton x:Name="ToggleButton" Focusable="False" ClickMode="Press"
+                            IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                            Background="#FF2C313A" BorderBrush="#FF4A5260" BorderThickness="1">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="#FF2C313A" BorderBrush="#FF4A5260" BorderThickness="1" CornerRadius="3">
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="28"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="Transparent"/>
+                        <Path Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                              Data="M 0,0 L 8,0 L 4,5 Z" Fill="#FFEEF1F5"/>
+                      </Grid>
+                    </Border>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+              <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False" Margin="10,4,32,4"
+                                VerticalAlignment="Center" HorizontalAlignment="Left"
+                                Content="{TemplateBinding SelectionBoxItem}"
+                                ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}">
+                <ContentPresenter.Resources>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="#FFEEF1F5"/>
+                  </Style>
+                </ContentPresenter.Resources>
+              </ContentPresenter>
+              <TextBox x:Name="PART_EditableTextBox" Visibility="Hidden" Background="#FF2C313A"
+                       Foreground="#FFEEF1F5" CaretBrush="#FFEEF1F5" BorderThickness="0"
+                       Margin="8,4,32,4" VerticalAlignment="Center"
+                       IsReadOnly="{TemplateBinding IsReadOnly}"/>
+              <Popup x:Name="Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False"
+                     IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Slide">
+                <Border x:Name="DropDown" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240"
+                        Background="#FF2C313A" BorderBrush="#FF4A5260" BorderThickness="1">
+                  <ScrollViewer Margin="2" SnapsToDevicePixels="True">
+                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEditable" Value="True">
+                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+              </Trigger>
+              <Trigger Property="HasItems" Value="False">
+                <Setter TargetName="DropDown" Property="MinHeight" Value="40"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
     <Style TargetType="ComboBoxItem">
       <Setter Property="Background" Value="#FF2C313A"/>
       <Setter Property="Foreground" Value="#FFEEF1F5"/>
-      <Setter Property="Padding" Value="8,4"/>
-      <Style.Triggers>
-        <Trigger Property="IsHighlighted" Value="True">
-          <Setter Property="Background" Value="#FF3A5A8C"/>
-          <Setter Property="Foreground" Value="#FFFFFFFF"/>
-        </Trigger>
-        <Trigger Property="IsSelected" Value="True">
-          <Setter Property="Background" Value="#FF2E7D32"/>
-          <Setter Property="Foreground" Value="#FFFFFFFF"/>
-        </Trigger>
-      </Style.Triggers>
+      <Setter Property="Padding" Value="8,6"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBoxItem">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter>
+                <ContentPresenter.Resources>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="#FFEEF1F5"/>
+                  </Style>
+                </ContentPresenter.Resources>
+              </ContentPresenter>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#FF3A5A8C"/>
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#FF2E7D32"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
     <Style TargetType="ListBox">
       <Setter Property="Background" Value="{StaticResource BgPanel}"/>

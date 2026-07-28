@@ -29,10 +29,10 @@ public static class StreamFrameGrabber
 
         try
         {
-            // -stimeout is microseconds for RTSP; keep short so UI stays responsive.
+            // FFmpeg 5+/7 uses -timeout (µs) as RTSP socket timeout; -stimeout was removed.
             var args =
                 $"-hide_banner -loglevel error -y " +
-                $"-rtsp_transport tcp -stimeout 5000000 " +
+                $"-rtsp_transport tcp -timeout 8000000 " +
                 $"-i \"{url}\" -frames:v 1 -q:v 3 \"{tmp}\"";
 
             var psi = new ProcessStartInfo
