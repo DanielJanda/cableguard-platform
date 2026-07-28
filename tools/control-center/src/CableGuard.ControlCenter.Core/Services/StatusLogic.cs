@@ -24,9 +24,12 @@ public static class StatusEvaluators
 {
     public static ComponentStatus EvaluateMediaMtx(ProbeResults p)
     {
+        // Functional RUNNING requires service + process + Control API + paths.
+        // WHEP is reported in Detail but is not the Control API probe.
         if (!p.ProcessAlive) return ComponentStatus.Stopped;
-        if (p.WhepReachable != true) return ComponentStatus.Fault;       // process up but WHEP dead
-        if (p.PathReady != true) return ComponentStatus.Degraded;        // WHEP up, camera path not ready
+        if (p.ServiceRunning == false) return ComponentStatus.Degraded;  // process without owning service
+        if (p.ControlApiReady != true) return ComponentStatus.Fault;     // process up but Control API dead
+        if (p.PathReady != true) return ComponentStatus.Degraded;        // API up, expected paths not ready
         return ComponentStatus.Running;
     }
 

@@ -56,6 +56,8 @@ public interface IComponentController
 
 public interface IMediaMtxApi
 {
+    /// <summary>GET /v3/paths/list — true when Control API on 127.0.0.1:9997 responds.</summary>
+    Task<bool?> IsControlApiReadyAsync(CancellationToken ct = default);
     Task<bool?> IsPathReadyAsync(string pathName, CancellationToken ct = default);
     Task<string?> GetConfiguredSourceAsync(string pathName, CancellationToken ct = default);
     Task<bool> PatchPathSourceAsync(string pathName, string source, CancellationToken ct = default);

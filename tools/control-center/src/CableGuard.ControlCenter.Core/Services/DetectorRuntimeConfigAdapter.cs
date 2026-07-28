@@ -105,8 +105,8 @@ public static class DetectorRuntimeConfigAdapter
               telegram:
                 enabled_env: TELEGRAM_ENABLED
               event_core:
-                enabled: false
-                note: Alarm publisher OFF for office test lab (heartbeat reporter separate).
+                enabled: {instance.PublishEventCore.ToString().ToLowerInvariant()}
+                note: Overridden at runtime by CABLEGUARD_EVENT_CORE_EVENTS; office test sets true + test_mode.
 
             # metadata for logs
             admin_studio_roi_profile: {roiId}

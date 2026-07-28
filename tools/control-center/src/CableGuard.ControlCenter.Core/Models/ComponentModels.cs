@@ -44,4 +44,8 @@ public sealed record ProbeResults(
     bool? HttpHealthy = null,
     bool? WhepReachable = null,
     bool? PathReady = null,
-    bool? DeepHealthAvailable = null);
+    bool? DeepHealthAvailable = null,
+    /// <summary>Windows service CableGuardMediaMTX is installed and Running. Null = not probed / N/A.</summary>
+    bool? ServiceRunning = null,
+    /// <summary>MediaMTX Control API on 127.0.0.1:9997 responds.</summary>
+    bool? ControlApiReady = null);

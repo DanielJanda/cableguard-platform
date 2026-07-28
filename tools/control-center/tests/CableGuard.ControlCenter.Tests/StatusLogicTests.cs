@@ -69,23 +69,60 @@ public class StatusLogicTests
     // --- service status detection: health-based, not process existence ---
 
     [Fact]
-    public void MediaMtx_ProcessUpButWhepDown_IsFault_NotRunning()
+    public void MediaMtx_ProcessUpButWhepDown_StillRunning_WhenServiceAndApiAndPathsOk()
     {
-        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(ProcessAlive: true, WhepReachable: false));
+        // WHEP is a frontend probe, not the Control API gate.
+        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(
+            ProcessAlive: true,
+            WhepReachable: false,
+            PathReady: true,
+            ServiceRunning: true,
+            ControlApiReady: true));
+        Assert.Equal(ComponentStatus.Running, status);
+    }
+
+    [Fact]
+    public void MediaMtx_ControlApiDown_IsFault()
+    {
+        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(
+            ProcessAlive: true,
+            PathReady: true,
+            ServiceRunning: true,
+            ControlApiReady: false));
         Assert.Equal(ComponentStatus.Fault, status);
     }
 
     [Fact]
-    public void MediaMtx_WhepUpButPathNotReady_IsDegraded()
+    public void MediaMtx_ServiceNotRunning_IsDegraded()
     {
-        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(true, WhepReachable: true, PathReady: false));
+        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(
+            ProcessAlive: true,
+            PathReady: true,
+            ServiceRunning: false,
+            ControlApiReady: true));
+        Assert.Equal(ComponentStatus.Degraded, status);
+    }
+
+    [Fact]
+    public void MediaMtx_PathNotReady_IsDegraded()
+    {
+        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(
+            ProcessAlive: true,
+            PathReady: false,
+            ServiceRunning: true,
+            ControlApiReady: true));
         Assert.Equal(ComponentStatus.Degraded, status);
     }
 
     [Fact]
     public void MediaMtx_AllProbesHealthy_IsRunning()
     {
-        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(true, WhepReachable: true, PathReady: true));
+        var status = StatusEvaluators.EvaluateMediaMtx(new ProbeResults(
+            ProcessAlive: true,
+            WhepReachable: true,
+            PathReady: true,
+            ServiceRunning: true,
+            ControlApiReady: true));
         Assert.Equal(ComponentStatus.Running, status);
     }
 

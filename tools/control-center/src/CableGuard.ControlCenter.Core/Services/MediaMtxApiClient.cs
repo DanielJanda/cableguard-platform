@@ -18,6 +18,17 @@ public sealed class MediaMtxApiClient : IMediaMtxApi
         _base = apiBase.TrimEnd('/');
     }
 
+    public async Task<bool?> IsControlApiReadyAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync($"{_base}/v3/paths/list", ct);
+            return resp.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException) { return null; }
+        catch (TaskCanceledException) { return null; }
+    }
+
     public async Task<bool?> IsPathReadyAsync(string pathName, CancellationToken ct = default)
     {
         try

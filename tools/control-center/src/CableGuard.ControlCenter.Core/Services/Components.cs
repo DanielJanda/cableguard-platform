@@ -123,8 +123,11 @@ public sealed class ComponentFactory
                     ? $"process=RUNNING (PID {pid?.ToString() ?? "?"})"
                     : "process=STOPPED";
 
+                var controlApiReady = processAlive && await _mediaMtxApi.IsControlApiReadyAsync(ct) == true;
+                var controlApiText = controlApiReady ? "control-api=READY" : "control-api=OFFLINE";
+
                 var whepStatus = processAlive ? await _prober.OptionsStatusCodeAsync(whepUrl, ct) : null;
-                var apiReady = whepStatus is >= 200 and < 300;
+                var whepReady = whepStatus is >= 200 and < 300;
 
                 var expected = ExpectedMediaMtxPaths();
                 var notReady = new List<string>();
@@ -140,21 +143,20 @@ public sealed class ComponentFactory
                         ? $"paths=READY ({expected.Count}/{expected.Count})"
                         : $"paths=NOT READY ({expected.Count - notReady.Count}/{expected.Count}: {string.Join(", ", notReady)})";
 
+                var serviceRunning = service?.IsRunning == true;
                 var probes = new ProbeResults(
                     ProcessAlive: processAlive,
-                    WhepReachable: apiReady,
-                    PathReady: pathsReady);
+                    WhepReachable: whepReady,
+                    PathReady: pathsReady,
+                    ServiceRunning: service is null ? false : serviceRunning,
+                    ControlApiReady: controlApiReady);
                 var status = StatusEvaluators.EvaluateMediaMtx(probes);
-
-                // A service that is installed but not running must never read as healthy.
-                if (service is not null && !service.IsRunning && status == ComponentStatus.Running)
-                    status = ComponentStatus.Degraded;
 
                 var detail = string.Join(
                     " · ",
                     serviceText,
                     processText,
-                    apiReady ? "api=READY" : "api=OFFLINE",
+                    controlApiText,
                     pathsText);
                 return new ComponentSnapshot(ComponentId.MediaMtx, status, detail, pid);
             },
