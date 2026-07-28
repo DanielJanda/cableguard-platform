@@ -238,7 +238,8 @@
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
           </Grid.RowDefinitions>
           <StackPanel Grid.Row="0" Margin="0,0,0,8">
             <StackPanel Orientation="Horizontal">
@@ -302,7 +303,20 @@
             <Button Content="TESTOVÁNÍ" Padding="16,8" Background="#FF8B5A00" Command="{Binding OpenTestLabCommand}"/>
             <Button Content="Obnovit" Padding="16,8" Command="{Binding RefreshCommand}"/>
           </StackPanel>
-          <Border Grid.Row="5" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10" MinHeight="120">
+          <Border Grid.Row="5" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10">
+            <StackPanel>
+              <TextBlock Text="{Binding MonitorModeHint}" Foreground="#FF80CBC4" Margin="0,0,0,6"/>
+              <TextBlock Text="{Binding MonitorPublicOrigin}" FontFamily="Consolas" FontSize="12" Foreground="#FFDDE1E7" Margin="0,0,0,8"/>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Button Content="Chrome kiosk START" Padding="12,6" Command="{Binding StartChromeKioskCommand}" Background="#FF2E7D32"/>
+                <Button Content="STOP" Padding="12,6" Command="{Binding StopChromeKioskCommand}" Background="#FF8E2A2A"/>
+                <Button Content="RESTART" Padding="12,6" Command="{Binding RestartChromeKioskCommand}"/>
+                <Button Content="Status" Padding="12,6" Command="{Binding RefreshKioskStatusCommand}"/>
+              </StackPanel>
+              <TextBlock Text="{Binding KioskStatusText}" FontFamily="Consolas" FontSize="11" Foreground="#FFB0BEC5" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+          <Border Grid.Row="6" Margin="0,12,0,0" Background="#FF14161A" CornerRadius="4" Padding="10" MinHeight="120">
             <ScrollViewer><TextBlock Text="{Binding StartAllProgress}" FontFamily="Consolas" FontSize="12" Foreground="#FFDDE1E7"/></ScrollViewer>
           </Border>
         </Grid>

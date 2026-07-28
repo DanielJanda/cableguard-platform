@@ -1,12 +1,8 @@
 # OPERATIONS — provozní runbook
 
-Last verified: 2026-07-27
+Last verified: 2026-07-28
 
-Verified against:
-
-- cableguard-platform `main` commit `5400cb3`
-- cableguard-monitor `main` commit `f085ef0`
-- cableguard-detector `main` commit `c628a2f`
+Verified against: production Chrome kiosk sprint
 
 Vše se spouští na PC **`10.6.1.40`**. Skripty nikdy nevypisují secrets.
 
@@ -24,9 +20,38 @@ PowerShell skripty níže zůstávají platné jako fallback / CI.
 
 ---
 
-## Start systému
+## Start systému (produkce)
 
-Doporučený způsob — celý stack jedním skriptem:
+```powershell
+cd C:\Users\mega\Documents\cableguard-platform
+# 1) MediaMTX (služba CableGuardMediaMTX nebo start_mediamtx.ps1)
+# 2) Production monitor (Event Core :8080 + Nitro UI :18080) — NE Vite
+.\scripts\start_production_monitor.ps1
+
+# 3) Chrome operator kiosk (jednou install, pak start / logon task)
+.\scripts\manage_operator_kiosk.ps1 -Action install   # AutoplayAllowlist ideálně jako Admin
+.\scripts\manage_operator_kiosk.ps1 -Action start
+.\scripts\manage_operator_kiosk.ps1 -Action status
+```
+
+Kanonický origin: `$env:CABLEGUARD_PUBLIC_ORIGIN` (default `http://10.6.1.40:8080`). Stejný origin musí mít MediaMTX `webrtcAllowOrigin` (`patch_mediamtx_internal_lan.ps1`).
+
+Dashboard:   http://10.6.1.40:8080/dashboard
+Horní kiosk: http://10.6.1.40:8080/kiosk/zahradky/horni-stanice
+
+Stop produkčního monitoru: `.\scripts\stop_production_monitor.ps1`
+
+### Development / TEST LAB (Vite)
+
+```powershell
+.\scripts\start_internal_event_core.ps1   # :8000
+# cableguard-monitor:
+.\scripts\start_internal_monitor.ps1      # Vite :8080 + dev BFF
+```
+
+## Start systému (legacy one-shot)
+
+Doporučený způsob — celý stack jedním skriptem (stále Vite monitor):
 
 ```powershell
 cd C:\Users\mega\Documents\cableguard-platform

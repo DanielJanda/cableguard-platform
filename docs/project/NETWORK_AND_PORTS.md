@@ -1,12 +1,8 @@
 # NETWORK_AND_PORTS — autoritativní tabulka portů
 
-Last verified: 2026-07-27
+Last verified: 2026-07-28
 
-Verified against:
-
-- cableguard-platform `main` commit `5400cb3`
-- cableguard-monitor `main` commit `f085ef0`
-- cableguard-detector `main` commit `c628a2f`
+Verified against: production Chrome kiosk sprint (PUBLIC_ORIGIN :8080)
 
 Vše běží na PC **`10.6.1.40`** (Windows). Firewall pravidla (Domain + Private profily) zajišťuje `scripts/ensure_internal_firewall.ps1`.
 
@@ -16,8 +12,9 @@ Vše běží na PC **`10.6.1.40`** (Windows). Firewall pravidla (Domain + Privat
 
 | Port | Protokol | Služba | Bind | Používá | Dostupný z LAN? | Localhost-only? | Nutný pro provoz? |
 |---|---|---|---|---|---|---|---|
-| **8000** | TCP | Event Core (uvicorn) | `0.0.0.0` (`start_internal_event_core.ps1`) | monitor BFF, WS klienti, detektor/simulátor, kiosky | **ANO** | ne | **ANO** |
-| **8080** | TCP | Monitor (Vite dev + BFF) | `0.0.0.0` (`start_internal_monitor.ps1`) | prohlížeče operátorů | **ANO** | ne | **ANO** |
+| **8000** | TCP | Event Core (dev / TEST LAB) | `0.0.0.0` (`start_internal_event_core.ps1`) | Vite BFF, detektor při odděleném API | **ANO** | ne | dev |
+| **8080** | TCP | Production Event Core + monitor UI + BFF | `0.0.0.0` (`start_production_monitor.ps1`) | prohlížeče / Chrome kiosk | **ANO** | ne | **ANO** (produkce) |
+| **18080** | TCP | Nitro SSR UI (loopback) | `127.0.0.1` | pouze FastAPI reverse-proxy | **NE** | **ANO** | **ANO** (produkce) |
 | **8889** | TCP | MediaMTX WHEP/HTTP | všechna rozhraní (`webrtcAddress :8889`) | WHEP handshake z prohlížečů, vestavěný player | **ANO** | ne | **ANO** |
 | **8189** | UDP | MediaMTX WebRTC ICE | všechna rozhraní | média WebRTC do prohlížečů | **ANO** | ne | **ANO** |
 | **8554** | TCP | MediaMTX RTSP proxy | všechna rozhraní | detektor (`mediamtx_proxy` input profil) — lokálně | ne (stačí localhost; firewall pravidlo pro něj nezakládáme) | prakticky ano | ANO od Phase 3 (detektor) |

@@ -16,6 +16,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly DispatcherTimer _refreshTimer;
     private string _systemStatus = "…";
     private string _startAllProgress = "";
+    private string _kioskStatusText = "Chrome kiosk: …";
     private bool _busy;
 
     public MainViewModel(
@@ -63,8 +64,12 @@ public sealed class MainViewModel : ObservableObject
         StartOfficeFallDebugCommand = new AsyncRelayCommand(() => StartOfficeFallAsync(debug: true));
         StopOfficeFallCommand = new AsyncRelayCommand(StopOfficeFallAsync);
         RestartOfficeFallCommand = new AsyncRelayCommand(RestartOfficeFallAsync);
-        OpenOfficeE2eMonitorCommand = new RelayCommand(() => OpenUrl($"http://{_config.LanHost}:8080/test-lab/office-fall"));
-        OpenOfficeStreamPreviewCommand = new RelayCommand(() => OpenUrl($"http://{_config.LanHost}:8080/test-lab/stream/office-test-camera"));
+        OpenOfficeE2eMonitorCommand = new RelayCommand(() => OpenUrl($"{_config.ResolvedPublicOrigin}/test-lab/office-fall"));
+        OpenOfficeStreamPreviewCommand = new RelayCommand(() => OpenUrl($"{_config.ResolvedPublicOrigin}/test-lab/stream/office-test-camera"));
+        StartChromeKioskCommand = new AsyncRelayCommand(() => RunKioskActionAsync("start"));
+        StopChromeKioskCommand = new AsyncRelayCommand(() => RunKioskActionAsync("stop"));
+        RestartChromeKioskCommand = new AsyncRelayCommand(() => RunKioskActionAsync("restart"));
+        RefreshKioskStatusCommand = new AsyncRelayCommand(RefreshKioskStatusAsync);
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _refreshTimer.Tick += (_, _) =>
@@ -97,8 +102,13 @@ public sealed class MainViewModel : ObservableObject
 
     public string SystemStatus { get => _systemStatus; private set => SetField(ref _systemStatus, value); }
     public string StartAllProgress { get => _startAllProgress; private set => SetField(ref _startAllProgress, value); }
+    public string KioskStatusText { get => _kioskStatusText; private set => SetField(ref _kioskStatusText, value); }
     public string BuildStamp => BuildInfo.Summary;
     public string PlatformRootHint => _config.PlatformRoot;
+    public string MonitorPublicOrigin => _config.ResolvedPublicOrigin;
+    public string MonitorModeHint => _config.UseProductionMonitor
+        ? "OPERATIONS: production monitor (Event Core + Nitro), not Vite dev"
+        : "TEST LAB / DEV: Vite monitor allowed";
 
     public AsyncRelayCommand StartAllCommand { get; }
     public AsyncRelayCommand StopAllCommand { get; }
@@ -113,12 +123,17 @@ public sealed class MainViewModel : ObservableObject
     public AsyncRelayCommand RestartOfficeFallCommand { get; }
     public RelayCommand OpenOfficeE2eMonitorCommand { get; }
     public RelayCommand OpenOfficeStreamPreviewCommand { get; }
+    public AsyncRelayCommand StartChromeKioskCommand { get; }
+    public AsyncRelayCommand StopChromeKioskCommand { get; }
+    public AsyncRelayCommand RestartChromeKioskCommand { get; }
+    public AsyncRelayCommand RefreshKioskStatusCommand { get; }
 
     public async Task RefreshAllAsync()
     {
         foreach (var row in Services) await row.RefreshAsync();
         Detectors.RefreshStatuses();
         await RecalculateSystemStatusAsync();
+        await RefreshKioskStatusAsync();
     }
 
     private Task RecalculateSystemStatusAsync()
@@ -132,6 +147,52 @@ public sealed class MainViewModel : ObservableObject
             _ => "PORUCHA",
         };
         return Task.CompletedTask;
+    }
+
+    private async Task RunKioskActionAsync(string action)
+    {
+        var script = _config.ChromeKioskManageScript;
+        if (!File.Exists(script))
+        {
+            MessageBox.Show($"Missing {script}", "Chrome kiosk", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        _logger.Info($"[KIOSK] {action}");
+        var output = await Task.Run(() => RunKioskScript(action));
+        StartAllProgress += output + Environment.NewLine;
+        await RefreshKioskStatusAsync();
+    }
+
+    private async Task RefreshKioskStatusAsync()
+    {
+        var output = await Task.Run(() => RunKioskScript("status"));
+        var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        KioskStatusText =
+            $"Monitor: {_config.ResolvedPublicOrigin} ({MonitorModeHint})\n" +
+            string.Join("\n", lines.TakeLast(12));
+    }
+
+    private string RunKioskScript(string action)
+    {
+        var script = _config.ChromeKioskManageScript;
+        if (!File.Exists(script)) return $"Script not found: {script}";
+        var psi = new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments =
+                $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" -Action {action} " +
+                $"-PublicOrigin \"{_config.ResolvedPublicOrigin}\" -KioskPath \"{_config.KioskPath}\"",
+            WorkingDirectory = _config.ScriptsDir,
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        using var proc = Process.Start(psi)!;
+        var stdout = proc.StandardOutput.ReadToEnd();
+        var stderr = proc.StandardError.ReadToEnd();
+        proc.WaitForExit(120_000);
+        return LogRedactor.Redact((stdout + stderr).Trim());
     }
 
     private async Task StartAllAsync()

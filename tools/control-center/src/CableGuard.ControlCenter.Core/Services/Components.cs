@@ -184,38 +184,66 @@ public sealed class ComponentFactory
 
     public IComponentController CreateEventCore()
     {
-        var pidFile = Path.Combine(_config.PlatformRoot, "runtime", "event-core", "event-core.pid");
-        var logFile = Path.Combine(_config.PlatformRoot, "runtime", "event-core", "event-core.err.log");
-        var startScript = Path.Combine(_config.ScriptsDir, "start_internal_event_core.ps1");
-        var healthUrl = $"{_config.EventCoreBaseLocal}/api/v1/health";
+        var useProd = _config.UseProductionMonitor;
+        var pidFile = useProd
+            ? Path.Combine(_config.PlatformRoot, "runtime", "production-monitor", "event-core.pid")
+            : Path.Combine(_config.PlatformRoot, "runtime", "event-core", "event-core.pid");
+        var logFile = useProd
+            ? Path.Combine(_config.PlatformRoot, "runtime", "production-monitor", "event-core.err.log")
+            : Path.Combine(_config.PlatformRoot, "runtime", "event-core", "event-core.err.log");
+        var startScript = useProd
+            ? _config.ProductionMonitorStartScript
+            : Path.Combine(_config.ScriptsDir, "start_internal_event_core.ps1");
+        var healthUrl = useProd
+            ? $"{_config.ResolvedPublicOrigin}/api/v1/health"
+            : $"{_config.EventCoreBaseLocal}/api/v1/health";
+        var listenPort = useProd ? 8080 : 8000;
 
         return new ServiceComponent(
             ComponentId.EventCore, "Event Core", isConfigured: true, logFile,
             statusFunc: async ct =>
             {
                 var pid = _processes.GetAlivePidFromFile(pidFile);
-                var processAlive = pid is not null || _processes.IsPortListening(8000);
+                var processAlive = pid is not null || _processes.IsPortListening(listenPort);
                 var healthBody = await _prober.GetBodyAsync(healthUrl, ct);
-                var healthy = healthBody?.Contains("\"ok\"") == true && healthBody.Contains("true");
+                var healthy = healthBody?.Contains("\"ok\"") == true ||
+                              healthBody?.Contains("\"status\"") == true;
+                // Prefer explicit ok/true when present; otherwise accept 200 JSON from /health.
+                if (healthBody is not null && healthBody.Contains("\"ok\"", StringComparison.Ordinal))
+                    healthy = healthBody.Contains("true", StringComparison.OrdinalIgnoreCase);
                 var status = StatusEvaluators.EvaluateEventCore(new ProbeResults(processAlive, HttpHealthy: healthy));
                 var detail = status switch
                 {
-                    ComponentStatus.Running => "/api/v1/health OK",
+                    ComponentStatus.Running => useProd
+                        ? $"production :{listenPort} /api/v1/health OK"
+                        : "/api/v1/health OK",
                     ComponentStatus.Fault => "Process/port up but /api/v1/health failing",
-                    _ => "Not running",
+                    _ => useProd ? "Not running (bundled with production monitor)" : "Not running",
                 };
                 return new ComponentSnapshot(ComponentId.EventCore, status, detail, pid);
             },
             startFunc: ct => RunScriptAsStep(ComponentId.EventCore, startScript, ct),
-            stopFunc: ct => StopByPidFile(ComponentId.EventCore, pidFile, "python", ct));
+            stopFunc: async ct =>
+            {
+                if (useProd && File.Exists(_config.ProductionMonitorStopScript))
+                    return await RunScriptAsStep(ComponentId.EventCore, _config.ProductionMonitorStopScript, ct);
+                return await StopByPidFile(ComponentId.EventCore, pidFile, "python", ct);
+            });
     }
 
     public IComponentController CreateMonitor()
     {
-        var pidFile = Path.Combine(_config.MonitorRoot, "runtime", "monitor.pid");
-        var logFile = Path.Combine(_config.MonitorRoot, "runtime", "monitor.out.log");
-        var startScript = Path.Combine(_config.MonitorRoot, "scripts", "start_internal_monitor.ps1");
+        var useProd = _config.UseProductionMonitor;
+        var pidFile = useProd
+            ? Path.Combine(_config.PlatformRoot, "runtime", "production-monitor", "event-core.pid")
+            : Path.Combine(_config.MonitorRoot, "runtime", "monitor.pid");
+        var logFile = useProd
+            ? Path.Combine(_config.PlatformRoot, "runtime", "production-monitor", "event-core.out.log")
+            : Path.Combine(_config.MonitorRoot, "runtime", "monitor.out.log");
+        var startScript = useProd ? _config.ProductionMonitorStartScript : _config.DevMonitorStartScript;
+        var stopScript = useProd ? _config.ProductionMonitorStopScript : "";
         var httpUrl = $"{_config.MonitorBaseLocal}/";
+        var modeLabel = useProd ? "production" : "Vite DEV";
 
         return new ServiceComponent(
             ComponentId.Monitor, "Monitor", isConfigured: true, logFile,
@@ -228,14 +256,19 @@ public sealed class ComponentFactory
                     new ProbeResults(processAlive, HttpHealthy: httpStatus is >= 200 and < 500));
                 var detail = status switch
                 {
-                    ComponentStatus.Running => $"HTTP :8080 responding ({httpStatus})",
-                    ComponentStatus.Fault => "Process up but HTTP :8080 not responding",
-                    _ => "Not running",
+                    ComponentStatus.Running => $"HTTP :8080 ({modeLabel}) responding ({httpStatus})",
+                    ComponentStatus.Fault => $"Process up but HTTP :8080 not responding ({modeLabel})",
+                    _ => $"Not running ({modeLabel})",
                 };
                 return new ComponentSnapshot(ComponentId.Monitor, status, detail, pid);
             },
             startFunc: ct => RunScriptAsStep(ComponentId.Monitor, startScript, ct),
-            stopFunc: ct => StopByPidFile(ComponentId.Monitor, pidFile, "", ct)); // npm.cmd tree: cmd→node
+            stopFunc: async ct =>
+            {
+                if (useProd && File.Exists(stopScript))
+                    return await RunScriptAsStep(ComponentId.Monitor, stopScript, ct);
+                return await StopByPidFile(ComponentId.Monitor, pidFile, "", ct);
+            });
     }
 
     public IComponentController CreateDetector()
