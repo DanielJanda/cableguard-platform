@@ -7,7 +7,10 @@ using CableGuard.ControlCenter.Core.Services;
 
 namespace CableGuard.ControlCenter.ViewModels;
 
-/// <summary>Detection tab — pick a camera here and START. No Cameras-tab SELECT required.</summary>
+/// <summary>
+/// Detection tab — office camera preselected.
+/// Primary START opens OpenCV preview (what operators expect in the lab).
+/// </summary>
 public sealed class DetectionOpsViewModel : ObservableObject
 {
     private readonly ControlCenterConfig _config;
@@ -41,11 +44,11 @@ public sealed class DetectionOpsViewModel : ObservableObject
         ReloadCameras();
         EnsureDefaultOfficeCamera();
 
-        StartCommand = new AsyncRelayCommand(() => StartAsync(debug: false));
+        // Primary = with OpenCV window (lab). Headless is secondary.
+        StartWithPreviewCommand = new AsyncRelayCommand(() => StartAsync(withPreview: true));
+        StartHeadlessCommand = new AsyncRelayCommand(() => StartAsync(withPreview: false));
         StopCommand = new AsyncRelayCommand(StopAsync);
         RestartCommand = new AsyncRelayCommand(RestartAsync);
-        OpenDebugCommand = new AsyncRelayCommand(() => StartAsync(debug: true));
-        CloseDebugCommand = new AsyncRelayCommand(StopAsync);
 
         _session.Changed += () =>
         {
@@ -78,11 +81,15 @@ public sealed class DetectionOpsViewModel : ObservableObject
     public string Summary { get => _summary; private set => SetField(ref _summary, value); }
     public string StatusLine { get => _statusLine; private set => SetField(ref _statusLine, value); }
 
-    public AsyncRelayCommand StartCommand { get; }
+    public AsyncRelayCommand StartWithPreviewCommand { get; }
+    public AsyncRelayCommand StartHeadlessCommand { get; }
     public AsyncRelayCommand StopCommand { get; }
     public AsyncRelayCommand RestartCommand { get; }
-    public AsyncRelayCommand OpenDebugCommand { get; }
-    public AsyncRelayCommand CloseDebugCommand { get; }
+
+    // Compat aliases used by older bindings / MainViewModel refresh hooks.
+    public AsyncRelayCommand StartCommand => StartWithPreviewCommand;
+    public AsyncRelayCommand OpenDebugCommand => StartWithPreviewCommand;
+    public AsyncRelayCommand CloseDebugCommand => StopCommand;
 
     public void ReloadCameras()
     {
@@ -115,7 +122,7 @@ public sealed class DetectionOpsViewModel : ObservableObject
         var cam = SelectedCamera ?? _session.Selected;
         if (cam is null)
         {
-            Summary = "Žádná kamera v registries — doplňte Cameras.";
+            Summary = "Žádná kamera — doplňte Cameras.";
             StatusLine = "STOPPED";
             return;
         }
@@ -126,13 +133,16 @@ public sealed class DetectionOpsViewModel : ObservableObject
         var row = _detectors.Items.FirstOrDefault(r => r.Instance.Id == instance.Id);
         row?.Refresh();
         var running = string.Equals(row?.Status, "BĚŽÍ", StringComparison.OrdinalIgnoreCase);
-        StatusLine = running ? $"RUNNING {row?.Detail}" : "STOPPED";
+        StatusLine = running
+            ? $"BĚŽÍ {row?.Detail} — náhled = samostatné OpenCV okno (hlavní panel Windows)"
+            : "STOPPED";
         Summary =
-            $"{cam.DisplayName} · {instance.InputProfile}/{instance.SourceMode} · {instance.InputStream}\n" +
-            $"model={instance.Model} device={instance.Device}";
+            $"{cam.DisplayName}\n" +
+            $"{instance.InputProfile} / {instance.SourceMode} / {instance.InputStream}\n" +
+            $"{instance.Model} · {instance.Device}";
     }
 
-    public async Task StartAsync(bool debug)
+    public async Task StartAsync(bool withPreview)
     {
         EnsureDefaultOfficeCamera();
         var cam = SelectedCamera ?? _session.Selected;
@@ -155,7 +165,7 @@ public sealed class DetectionOpsViewModel : ObservableObject
         var instance = CameraDetectionLauncher.ResolveOrCreateInstance(cam, docs);
         ForceOfficePyAv(instance, cam);
         instance.Enabled = true;
-        instance.DebugOverlay = debug;
+        instance.DebugOverlay = withPreview;
         instance.PublishTelegram = false;
         _notifications.TelegramEnabled = false;
 
@@ -173,18 +183,33 @@ public sealed class DetectionOpsViewModel : ObservableObject
         await _detectors.ReloadAsync();
         var live = _detectors.Items.Select(i => i.Instance).FirstOrDefault(i => i.Id == instance.Id) ?? instance;
         ForceOfficePyAv(live, cam);
-        live.DebugOverlay = debug;
+        live.DebugOverlay = withPreview;
         live.PublishTelegram = false;
         live.Enabled = true;
 
-        _logger.Info($"[DETECTION] START camera={cam.CameraId} profile={live.InputProfile} source={live.SourceMode} path={live.InputStream}");
-        await _detectors.StartAsync(live, debug);
-        await Task.Delay(1500);
+        // Restart if already running so we can switch headless ↔ preview cleanly.
+        if (_detectors.Items.FirstOrDefault(r => r.Instance.Id == live.Id) is { } existing)
+        {
+            existing.Refresh();
+            if (string.Equals(existing.Status, "BĚŽÍ", StringComparison.OrdinalIgnoreCase))
+            {
+                await _detectors.StopAsync(live, reload: false);
+                await Task.Delay(1200);
+            }
+        }
+
+        _logger.Info($"[DETECTION] START camera={cam.CameraId} preview={withPreview} profile={live.InputProfile} path={live.InputStream}");
+        if (withPreview)
+            await _detectors.OpenDebugAsync(live);
+        else
+            await _detectors.StartAsync(live, debug: false);
+
+        await Task.Delay(2000);
         RefreshSummary();
-        if (!StatusLine.StartsWith("RUNNING", StringComparison.OrdinalIgnoreCase))
+        if (!StatusLine.StartsWith("BĚŽÍ", StringComparison.OrdinalIgnoreCase))
         {
             var errLog = System.IO.Path.Combine(_config.LogsDir, "detectors", $"{live.Id}.err.log");
-            MessageBox.Show($"Detektor se nespustil. Log:\n{errLog}", "Detection",
+            MessageBox.Show($"Detektor se nespustil.\n{errLog}", "Detection",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -205,7 +230,7 @@ public sealed class DetectionOpsViewModel : ObservableObject
     {
         await StopAsync();
         await Task.Delay(1000);
-        await StartAsync(debug: false);
+        await StartAsync(withPreview: true);
     }
 
     public void OpenMonitor()

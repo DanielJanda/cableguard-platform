@@ -83,8 +83,10 @@ public sealed class CameraDetectionLauncherTests
     {
         var root = Path.Combine(Path.GetTempPath(), "cg-cc-env-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        var prev = Environment.GetEnvironmentVariable("CABLEGUARD_INGEST_API_KEY");
         try
         {
+            Environment.SetEnvironmentVariable("CABLEGUARD_INGEST_API_KEY", null);
             File.WriteAllText(Path.Combine(root, ".env"), "CABLEGUARD_INGEST_API_KEY=test-ingest-key-not-real\n");
             var instance = new DetectorInstance
             {
@@ -110,6 +112,7 @@ public sealed class CameraDetectionLauncherTests
         }
         finally
         {
+            Environment.SetEnvironmentVariable("CABLEGUARD_INGEST_API_KEY", prev);
             try { Directory.Delete(root, recursive: true); } catch { /* ignore */ }
         }
     }

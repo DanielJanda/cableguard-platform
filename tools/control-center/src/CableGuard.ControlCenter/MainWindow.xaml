@@ -416,6 +416,8 @@
         <ScrollViewer Margin="16">
           <StackPanel>
             <TextBlock Text="Detection" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,12"
+                       Text="START S NÁHLEDEM otevře samostatné OpenCV okno (např. „PAD PYAV mediamtx · full · ASYNC“) — není uvnitř Admin Studio. Podívejte se na hlavní panel Windows."/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
               <TextBlock Text="Kamera:" VerticalAlignment="Center" Margin="0,0,8,0"/>
               <ComboBox Width="320"
@@ -426,12 +428,12 @@
             <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontFamily="Consolas" Margin="0,0,0,4"/>
             <TextBlock Text="{Binding StatusLine}" FontWeight="Bold" Margin="0,0,0,12"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-              <Button Content="START" Command="{Binding StartCommand}" Background="#FF2E7D32" FontWeight="Bold"/>
+              <Button Content="START S NÁHLEDEM" Command="{Binding StartWithPreviewCommand}"
+                      Background="#FFEF6C00" Foreground="#FF111318" FontWeight="Bold" Padding="14,6"/>
+              <Button Content="START BEZ OKNA" Command="{Binding StartHeadlessCommand}" Background="#FF2E7D32"/>
               <Button Content="STOP" Command="{Binding StopCommand}"/>
-              <Button Content="RESTART" Command="{Binding RestartCommand}"/>
-              <Button Content="OPEN DEBUG OVERLAY" Command="{Binding OpenDebugCommand}" Background="#FF8B5A00"/>
-              <Button Content="CLOSE DEBUG OVERLAY" Command="{Binding CloseDebugCommand}"/>
-              <Button Content="OPEN MONITOR" Command="{Binding DataContext.OpenMonitorForSelectedCommand, RelativeSource={RelativeSource AncestorType=Window}}" Background="#FF3A5A8C"/>
+              <Button Content="VIDEO V PROHLÍŽEČI" Command="{Binding DataContext.OpenMonitorForSelectedCommand, RelativeSource={RelativeSource AncestorType=Window}}" Background="#FF3A5A8C"
+                      ToolTip="Čisté video bez AI překryvu (Monitor / test-lab)"/>
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
