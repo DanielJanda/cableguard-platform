@@ -292,11 +292,15 @@ public sealed class ComponentFactory
 
                 var pid = _detectors?.FindPid(primary)
                           ?? _processes.FindProcessByCommandLineHint(primary.ProcessHint);
+                var profile = primary.InputProfile;
+                if (string.IsNullOrWhiteSpace(profile)) profile = "pyav_rtsp";
+                var sourceMode = primary.SourceMode;
+                if (string.IsNullOrWhiteSpace(sourceMode)) sourceMode = "mediamtx";
                 var status = StatusEvaluators.EvaluateDetector(
                     new ProbeResults(pid is not null, DeepHealthAvailable: false));
                 var detail = pid is not null
-                    ? $"RUNNING PID {pid} · stream={primary.InputStream} · deep health NOT AVAILABLE"
-                    : $"Stopped · instance={primary.Id} · stream={primary.InputStream}";
+                    ? $"RUNNING PID {pid} · stream={primary.InputStream} · backend={profile} · source={sourceMode} · deep health via Event Core heartbeat when enabled"
+                    : $"Stopped · instance={primary.Id} · stream={primary.InputStream} · backend={profile}";
                 return Task.FromResult(new ComponentSnapshot(ComponentId.Detector, status, detail, pid));
             },
             startFunc: async ct =>

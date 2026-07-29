@@ -37,7 +37,7 @@ public class AdminLabServicesTests
     }
 
     [Fact]
-    public void DetectorLaunch_Fall_UsesMediaMtxProxy_NoCredentialsInArgs()
+    public void DetectorLaunch_Fall_UsesPyAvMediaMtx_NoCredentialsInArgs()
     {
         var instance = new DetectorInstance
         {
@@ -55,11 +55,13 @@ public class AdminLabServicesTests
         };
         var spec = DetectorLaunchBuilder.Build(instance, config, new NotificationsDocument { TelegramEnabled = false });
         var cmdline = DetectorLaunchBuilder.FormatCommandLine(spec);
-        Assert.Contains("mediamtx_proxy", cmdline);
+        Assert.Contains("pyav_rtsp", cmdline);
         Assert.Contains("--debug-overlay", cmdline);
         Assert.DoesNotContain("rtsp://", string.Join(" ", spec.Arguments));
         Assert.DoesNotContain("password", cmdline, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("false", spec.Environment["TELEGRAM_ENABLED"]);
+        Assert.Equal("pyav_rtsp", spec.Environment["CABLEGUARD_FALL_INPUT_PROFILE"]);
+        Assert.Equal("mediamtx", spec.Environment["CABLEGUARD_FALL_SOURCE_MODE"]);
         Assert.Contains("office-test", spec.Environment["CABLEGUARD_MEDIAMTX_RTSP_URL"]);
     }
 
