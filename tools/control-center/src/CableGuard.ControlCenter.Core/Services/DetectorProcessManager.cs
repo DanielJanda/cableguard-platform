@@ -82,7 +82,8 @@ public sealed class DetectorProcessManager
         _pids[instance.Id] = proc.Id;
         _ = Task.Run(() => Drain(proc.StandardOutput, outLog), CancellationToken.None);
         _ = Task.Run(() => Drain(proc.StandardError, errLog), CancellationToken.None);
-        await Task.Delay(800, ct);
+        // CUDA/model import can take several seconds before ConfigError or healthy loop.
+        await Task.Delay(2500, ct);
         if (proc.HasExited)
             return (false, $"Exited immediately (code {proc.ExitCode}). See {errLog}");
         return (true, $"Started PID {proc.Id}.");

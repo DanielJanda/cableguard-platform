@@ -88,10 +88,18 @@ public sealed class EventsTestsViewModel : ObservableObject
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json"),
             };
-            // API key from env if present — never log it.
-            var key = Environment.GetEnvironmentVariable("CABLEGUARD_EVENT_CORE_API_KEY");
-            if (!string.IsNullOrWhiteSpace(key))
-                req.Headers.TryAddWithoutValidation("X-API-Key", key);
+            // Ingest key from process env or platform .env — never log it.
+            var key = PlatformEnvSecrets.TryGet(PlatformEnvSecrets.IngestApiKey, _config.PlatformRoot);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                LastResult =
+                    "Chybí CABLEGUARD_INGEST_API_KEY (process env nebo platform .env). " +
+                    "Bez klíče Event Core vrací 401.";
+                _logger.Warn("[TEST-EVENT] missing CABLEGUARD_INGEST_API_KEY");
+                MessageBox.Show(LastResult, "TEST EVENT", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            req.Headers.TryAddWithoutValidation("X-API-Key", key);
 
             using var resp = await _http.SendAsync(req);
             var body = await resp.Content.ReadAsStringAsync();

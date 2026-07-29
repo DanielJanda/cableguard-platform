@@ -159,7 +159,21 @@ public sealed class CamerasViewModel : ObservableObject
         live.DebugOverlay = debug;
         _logger.Info($"[CAMERAS] START DETECTION camera={camera.CameraId} profile={live.InputProfile} source={live.SourceMode} path={live.InputStream}");
         await _detectors.StartAsync(live, debug);
+        await Task.Delay(2000);
         await ReloadAsync();
+        var row = _detectors.Items.FirstOrDefault(i => i.Instance.Id == live.Id);
+        row?.Refresh();
+        if (row is not null && !string.Equals(row.Status, "BĚŽÍ", StringComparison.OrdinalIgnoreCase))
+        {
+            var errLog = Path.Combine(_config.LogsDir, "detectors", $"{live.Id}.err.log");
+            MessageBox.Show(
+                $"Detektor se nespustil nebo ihned skončil.\n\nZkontrolujte:\n" +
+                $"• CABLEGUARD_EVENT_CORE_URL / CABLEGUARD_INGEST_API_KEY (platform .env)\n" +
+                $"• MediaMTX path READY\n• log: {errLog}",
+                "START DETECTION",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
     }
 
     public async Task StopDetectionAsync(CameraEntry camera)
