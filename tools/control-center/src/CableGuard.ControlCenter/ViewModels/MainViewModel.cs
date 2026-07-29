@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using CableGuard.ControlCenter.Core.Models;
@@ -33,7 +34,12 @@ public sealed class MainViewModel : ObservableObject
         ScenariosViewModel scenarios,
         VideoLabViewModel videoLab,
         LogsViewModel logs,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        SelectedCameraSession session,
+        DetectionOpsViewModel detectionOps,
+        RecordingOpsViewModel recordingOps,
+        EventsTestsViewModel eventsTests,
+        IMediaMtxApi mediaMtxApi)
     {
         _config = config;
         _logger = logger;
@@ -48,9 +54,19 @@ public sealed class MainViewModel : ObservableObject
         VideoLab = videoLab;
         Logs = logs;
         Settings = settings;
+        Session = session;
+        DetectionOps = detectionOps;
+        RecordingOps = recordingOps;
+        EventsTests = eventsTests;
 
         foreach (var component in components)
             Services.Add(new ServiceRowViewModel(component, logger, () => _ = RecalculateSystemStatusAsync()));
+
+        StatusBar = new OperationsStatusBarViewModel(
+            session,
+            () => Services.ToList(),
+            () => Detectors,
+            mediaMtxApi);
 
         _orchestrator = new StartAllOrchestrator(components, TimeSpan.FromSeconds(config.ReadinessTimeoutSeconds));
         StartAllCommand = new AsyncRelayCommand(StartAllAsync, () => !_busy);
@@ -70,6 +86,7 @@ public sealed class MainViewModel : ObservableObject
         StopChromeKioskCommand = new AsyncRelayCommand(() => RunKioskActionAsync("stop"));
         RestartChromeKioskCommand = new AsyncRelayCommand(() => RunKioskActionAsync("restart"));
         RefreshKioskStatusCommand = new AsyncRelayCommand(RefreshKioskStatusAsync);
+        OpenMonitorForSelectedCommand = new RelayCommand(() => DetectionOps.OpenMonitor());
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _refreshTimer.Tick += (_, _) =>
@@ -99,6 +116,11 @@ public sealed class MainViewModel : ObservableObject
     public VideoLabViewModel VideoLab { get; }
     public LogsViewModel Logs { get; }
     public SettingsViewModel Settings { get; }
+    public SelectedCameraSession Session { get; }
+    public DetectionOpsViewModel DetectionOps { get; }
+    public RecordingOpsViewModel RecordingOps { get; }
+    public EventsTestsViewModel EventsTests { get; }
+    public OperationsStatusBarViewModel StatusBar { get; }
 
     public string SystemStatus { get => _systemStatus; private set => SetField(ref _systemStatus, value); }
     public string StartAllProgress { get => _startAllProgress; private set => SetField(ref _startAllProgress, value); }
@@ -127,11 +149,16 @@ public sealed class MainViewModel : ObservableObject
     public AsyncRelayCommand StopChromeKioskCommand { get; }
     public AsyncRelayCommand RestartChromeKioskCommand { get; }
     public AsyncRelayCommand RefreshKioskStatusCommand { get; }
+    public RelayCommand OpenMonitorForSelectedCommand { get; }
 
     public async Task RefreshAllAsync()
     {
         foreach (var row in Services) await row.RefreshAsync();
         Detectors.RefreshStatuses();
+        await Cameras.ReloadAsync();
+        DetectionOps.RefreshSummary();
+        await RecordingOps.RefreshAsync();
+        await StatusBar.RefreshAsync();
         await RecalculateSystemStatusAsync();
         await RefreshKioskStatusAsync();
     }

@@ -2,6 +2,25 @@
   "version": 1,
   "cameras": [
     {
+      "camera_id": "office-63",
+      "display_name": "Kancelářská kamera",
+      "site_id": "office",
+      "station_id": "desk",
+      "host": "10.6.1.63",
+      "rtsp_port": 554,
+      "profile": "Streaming/Channels/102",
+      "transport": "tcp",
+      "enabled": true,
+      "credential_ref": "CableGuard.Camera.office-63",
+      "mediamtx_path": "office-test-camera",
+      "environment": "test",
+      "detector_input_profile": "pyav_rtsp",
+      "preferred_backend": "pyav_rtsp",
+      "source_mode": "mediamtx",
+      "recording_allowed": true,
+      "event_generation_allowed": true
+    },
+    {
       "camera_id": "zahradky-upper-92",
       "display_name": "Horní kamera 92",
       "site_id": "zahradky",
@@ -12,7 +31,13 @@
       "transport": "tcp",
       "enabled": true,
       "credential_ref": "CableGuard.Camera.zahradky-upper-92",
-      "mediamtx_path": "zahradky-horni-stanice-92"
+      "mediamtx_path": "zahradky-horni-stanice-92",
+      "environment": "production",
+      "detector_input_profile": "pyav_rtsp",
+      "preferred_backend": "pyav_rtsp",
+      "source_mode": "mediamtx",
+      "recording_allowed": false,
+      "event_generation_allowed": true
     },
     {
       "camera_id": "zahradky-upper-90",
@@ -25,20 +50,13 @@
       "transport": "tcp",
       "enabled": true,
       "credential_ref": "CableGuard.Camera.zahradky-upper-90",
-      "mediamtx_path": "zahradky-horni-stanice-90"
-    },
-    {
-      "camera_id": "office-test-1",
-      "display_name": "Kancelář test kamera",
-      "site_id": "office",
-      "station_id": "desk",
-      "host": "10.6.1.123",
-      "rtsp_port": 554,
-      "profile": "Streaming/Channels/102",
-      "transport": "tcp",
-      "enabled": false,
-      "credential_ref": "CableGuard.Camera.office-test-1",
-      "mediamtx_path": "office-test"
+      "mediamtx_path": "zahradky-horni-stanice-90",
+      "environment": "production",
+      "detector_input_profile": "pyav_rtsp",
+      "preferred_backend": "pyav_rtsp",
+      "source_mode": "mediamtx",
+      "recording_allowed": false,
+      "event_generation_allowed": true
     }
   ],
   "stream_mappings": [

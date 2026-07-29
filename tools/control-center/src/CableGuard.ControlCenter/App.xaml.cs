@@ -52,11 +52,15 @@ public partial class App : Application
         var components = factory.CreateAllInStartOrder();
 
         var mode = new AdminModeViewModel();
-        var camerasVm = new CamerasViewModel(config, logger, mediaMtxApi, credentials, switchService, cameraApply);
-        var streamsVm = new StreamsViewModel(config, logger, mediaMtxApi, switchService, () => camerasVm.Registry);
+        var session = new SelectedCameraSession();
+        OfficeCameraBootstrap.EnsureOffice63(config, logger);
+
         var notificationsVm = new NotificationsViewModel(config, logger, credentials);
         var detectorsVm = new DetectorsViewModel(config, logger, detectorManager,
             () => StreamsService.Load(config.StreamsJsonPath), () => notificationsVm.Document);
+        var camerasVm = new CamerasViewModel(config, logger, mediaMtxApi, credentials, switchService, cameraApply,
+            session, detectorsVm, notificationsVm);
+        var streamsVm = new StreamsViewModel(config, logger, mediaMtxApi, switchService, () => camerasVm.Registry);
         var mediaMtx = components.First(c => c.Id == ComponentId.MediaMtx);
         var calibrationVm = new CalibrationViewModel(
             config, logger,
@@ -70,9 +74,13 @@ public partial class App : Application
             () => StreamsService.Load(config.StreamsJsonPath), () => camerasVm.Registry, components);
         var logsVm = new LogsViewModel(config);
         var settingsVm = new SettingsViewModel(config);
+        var detectionOps = new DetectionOpsViewModel(config, logger, session, detectorsVm, notificationsVm, mediaMtxApi);
+        var recordingOps = new RecordingOpsViewModel(config, session, mediaMtxApi);
+        var eventsTests = new EventsTestsViewModel(config, logger, session, http);
 
         var mainVm = new MainViewModel(config, logger, components, mode, camerasVm, streamsVm, detectorsVm,
-            calibrationVm, notificationsVm, hardwareVm, scenariosVm, videoLabVm, logsVm, settingsVm);
+            calibrationVm, notificationsVm, hardwareVm, scenariosVm, videoLabVm, logsVm, settingsVm,
+            session, detectionOps, recordingOps, eventsTests, mediaMtxApi);
 
         logger.Info("Composition complete, showing window.");
         var window = new MainWindow(mainVm);

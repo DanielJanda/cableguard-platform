@@ -15,6 +15,9 @@ public sealed class CamerasViewModel : ObservableObject
     private readonly ICredentialStore _credentials;
     private readonly StreamSwitchService _switchService;
     private readonly CameraRuntimeApplyService _applyService;
+    private readonly SelectedCameraSession _session;
+    private readonly DetectorsViewModel _detectors;
+    private readonly NotificationsViewModel _notifications;
 
     private string _registryStatus = "";
     private string _switchProgress = "";
@@ -26,7 +29,10 @@ public sealed class CamerasViewModel : ObservableObject
         IMediaMtxApi api,
         ICredentialStore credentials,
         StreamSwitchService switchService,
-        CameraRuntimeApplyService applyService)
+        CameraRuntimeApplyService applyService,
+        SelectedCameraSession session,
+        DetectorsViewModel detectors,
+        NotificationsViewModel notifications)
     {
         _config = config;
         _logger = logger;
@@ -34,6 +40,9 @@ public sealed class CamerasViewModel : ObservableObject
         _credentials = credentials;
         _switchService = switchService;
         _applyService = applyService;
+        _session = session;
+        _detectors = detectors;
+        _notifications = notifications;
         ReloadCommand = new AsyncRelayCommand(ReloadAsync);
         AddCommand = new RelayCommand(AddCamera);
         _ = ReloadAsync();
@@ -42,9 +51,12 @@ public sealed class CamerasViewModel : ObservableObject
     public ObservableCollection<CameraRowViewModel> Cameras { get; } = new();
     public string RegistryStatus { get => _registryStatus; private set => SetField(ref _registryStatus, value); }
     public string SwitchProgress { get => _switchProgress; private set => SetField(ref _switchProgress, value); }
+    public string SelectedCameraLabel =>
+        _session.Selected is null ? "Vybraná: (žádná)" : $"Vybraná: {_session.Selected.DisplayName} ({_session.Selected.CameraId})";
     public AsyncRelayCommand ReloadCommand { get; }
     public RelayCommand AddCommand { get; }
     public CameraRegistryDocument Registry => _registry;
+    public SelectedCameraSession Session => _session;
 
     public async Task ReloadAsync()
     {
@@ -62,9 +74,108 @@ public sealed class CamerasViewModel : ObservableObject
         foreach (var camera in _registry.Cameras)
             Cameras.Add(new CameraRowViewModel(camera, camera.CameraId == primary?.CameraId, this));
 
-        RegistryStatus = $"{_registry.Cameras.Count} kamer, produkční stream '{_config.ProductionStream}' → {primary?.DisplayName ?? "?"}";
+        // Auto-select office-63 when nothing selected.
+        if (_session.Selected is null)
+        {
+            var office = _registry.Cameras.FirstOrDefault(c =>
+                string.Equals(c.CameraId, OfficeCameraBootstrap.OfficeCameraId, StringComparison.OrdinalIgnoreCase));
+            if (office is not null) _session.Select(office);
+        }
+
+        RegistryStatus = $"{_registry.Cameras.Count} kamer · {SelectedCameraLabel}";
+        OnPropertyChanged(nameof(SelectedCameraLabel));
         foreach (var row in Cameras)
             await row.RefreshAsync(_api);
+    }
+
+    public void SelectCamera(CameraEntry camera)
+    {
+        _session.Select(camera);
+        OnPropertyChanged(nameof(SelectedCameraLabel));
+        RegistryStatus = $"{_registry.Cameras.Count} kamer · {SelectedCameraLabel}";
+        foreach (var row in Cameras)
+            row.NotifySelectionChanged();
+        _logger.Info($"[CAMERAS] Selected {camera.CameraId} path={camera.MediaMtxPath} backend={camera.PreferredBackend}");
+    }
+
+    public async Task StartDetectionAsync(CameraEntry camera, bool debug = false)
+    {
+        SelectCamera(camera);
+        var path = string.IsNullOrWhiteSpace(camera.MediaMtxPath) ? camera.CameraId : camera.MediaMtxPath;
+        var ready = await _api.IsPathReadyAsync(path);
+        if (ready != true)
+        {
+            MessageBox.Show($"MediaMTX path '{path}' není READY.", "START DETECTION",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var docs = DetectorLaunchBuilder.Load(_config.DetectorsJsonPath);
+        var instance = CameraDetectionLauncher.ResolveOrCreateInstance(camera, docs);
+        var summary = CameraDetectionLauncher.FormatOperatorSummary(
+            CameraDetectionLauncher.BuildSafeSummary(camera, instance));
+        if (summary.Contains("rtsp://", StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show("Souhrn obsahuje zakázaná data.", "Security", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var ok = MessageBox.Show(summary + (debug ? "\n\nDEBUG overlay ON" : "\n\nBez debug okna"),
+            "START DETECTION", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (ok != MessageBoxResult.OK) return;
+
+        try
+        {
+            var streams = StreamsService.Load(_config.StreamsJsonPath);
+            if (!streams.Streams.Any(s => string.Equals(s.StreamId, instance.InputStream, StringComparison.OrdinalIgnoreCase)))
+            {
+                streams.Streams.Add(new LogicalStream
+                {
+                    StreamId = instance.InputStream,
+                    DisplayName = camera.DisplayName,
+                    MediaMtxPath = instance.InputStream,
+                    CameraId = camera.CameraId,
+                    Enabled = true,
+                    IsProduction = !string.Equals(camera.Environment, "test", StringComparison.OrdinalIgnoreCase),
+                });
+            }
+            StreamsService.Save(streams, _config.StreamsJsonPath, _registry.Cameras.Select(c => c.CameraId));
+            DetectorLaunchBuilder.Save(docs, _config.DetectorsJsonPath, streams.Streams.Select(s => s.StreamId));
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"[CAMERAS] persist detector: {ex.Message}");
+        }
+
+        if (string.Equals(camera.Environment, "test", StringComparison.OrdinalIgnoreCase))
+        {
+            instance.PublishTelegram = false;
+            _notifications.TelegramEnabled = false;
+        }
+        instance.DebugOverlay = debug;
+
+        await _detectors.ReloadAsync();
+        var live = _detectors.Items.Select(i => i.Instance).FirstOrDefault(i => i.Id == instance.Id) ?? instance;
+        live.DebugOverlay = debug;
+        _logger.Info($"[CAMERAS] START DETECTION camera={camera.CameraId} profile={live.InputProfile} source={live.SourceMode} path={live.InputStream}");
+        await _detectors.StartAsync(live, debug);
+        await ReloadAsync();
+    }
+
+    public async Task StopDetectionAsync(CameraEntry camera)
+    {
+        var docs = DetectorLaunchBuilder.Load(_config.DetectorsJsonPath);
+        var instance = CameraDetectionLauncher.ResolveOrCreateInstance(camera, docs);
+        var live = _detectors.Items.Select(i => i.Instance).FirstOrDefault(i => i.Id == instance.Id);
+        if (live is not null) await _detectors.StopAsync(live);
+        await ReloadAsync();
+    }
+
+    public async Task RestartDetectionAsync(CameraEntry camera)
+    {
+        await StopDetectionAsync(camera);
+        await Task.Delay(1500);
+        await StartDetectionAsync(camera, debug: false);
     }
 
     public void Persist()
@@ -403,6 +514,17 @@ public sealed class CamerasViewModel : ObservableObject
         return CameraRuntimeApplyService.FindDependencies(camera, _registry, streams, detectors, rois, scenarios);
     }
 
+    public string GetDetectorStateLabel(CameraEntry camera)
+    {
+        var path = string.IsNullOrWhiteSpace(camera.MediaMtxPath) ? camera.CameraId : camera.MediaMtxPath;
+        var row = _detectors.Items.FirstOrDefault(r =>
+            r.Instance.DetectorType == "fall" &&
+            string.Equals(r.Instance.InputStream, path, StringComparison.OrdinalIgnoreCase));
+        if (row is null) return "DET STOPPED";
+        row.Refresh();
+        return string.Equals(row.Status, "BĚŽÍ", StringComparison.OrdinalIgnoreCase) ? "DET RUNNING" : "DET STOPPED";
+    }
+
     private void ReplaceInRegistry(CameraEntry cam)
     {
         var idx = _registry.Cameras.FindIndex(c => c.CameraId == cam.CameraId);
@@ -424,6 +546,12 @@ public sealed class CamerasViewModel : ObservableObject
         MediaMtxPath = c.MediaMtxPath,
         RuntimeState = c.RuntimeState,
         LastApplyMessage = c.LastApplyMessage,
+        Environment = c.Environment,
+        DetectorInputProfile = c.DetectorInputProfile,
+        PreferredBackend = c.PreferredBackend,
+        SourceMode = c.SourceMode,
+        RecordingAllowed = c.RecordingAllowed,
+        EventGenerationAllowed = c.EventGenerationAllowed,
     };
 }
 
@@ -432,12 +560,16 @@ public sealed class CameraRowViewModel : ObservableObject
     private readonly CamerasViewModel _parent;
     private string _status = "…";
     private string _testResult = "";
+    private string _detectorState = "…";
+    private string _recordingState = "…";
+    private bool _isSelected;
 
     public CameraRowViewModel(CameraEntry camera, bool isPrimary, CamerasViewModel parent)
     {
         Camera = camera;
         IsPrimary = isPrimary;
         _parent = parent;
+        _isSelected = parent.Session.IsSelected(camera.CameraId);
         PreviewCommand = new RelayCommand(() => _parent.Preview(Camera));
         OpenInMonitorCommand = new RelayCommand(
             () => _parent.OpenInMonitor(Camera),
@@ -449,16 +581,27 @@ public sealed class CameraRowViewModel : ObservableObject
         EditCommand = new RelayCommand(() => _parent.EditCamera(Camera));
         ApplyCommand = new AsyncRelayCommand(() => _parent.ApplyToMediaMtxAsync(Camera));
         DeleteCommand = new AsyncRelayCommand(() => _parent.DeleteCameraAsync(Camera));
+        SelectCommand = new RelayCommand(() => _parent.SelectCamera(Camera));
+        StartDetectionCommand = new AsyncRelayCommand(() => _parent.StartDetectionAsync(Camera));
+        StopDetectionCommand = new AsyncRelayCommand(() => _parent.StopDetectionAsync(Camera));
+        RestartDetectionCommand = new AsyncRelayCommand(() => _parent.RestartDetectionAsync(Camera));
     }
 
     public CameraEntry Camera { get; }
     public bool IsPrimary { get; }
-    public string Title => IsPrimary ? $"{Camera.DisplayName}  ★ PRIMÁRNÍ" : Camera.DisplayName;
+    public bool IsSelected { get => _isSelected; private set => SetField(ref _isSelected, value); }
+    public string EnvBadge => string.Equals(Camera.Environment, "test", StringComparison.OrdinalIgnoreCase) ? "TEST" : "PRODUCTION";
+    public string Title =>
+        (IsSelected ? "▶ " : "") +
+        (IsPrimary ? $"{Camera.DisplayName}  ★ PRIMÁRNÍ" : Camera.DisplayName);
     public string Subtitle =>
-        $"IP: {Camera.Host}:{Camera.RtspPort}  profile: {Camera.Profile}  transport: {Camera.Transport}  " +
-        $"path: {Camera.MediaMtxPath}  state: {Camera.RuntimeState}  {(Camera.Enabled ? "" : "(disabled)")}";
+        $"{EnvBadge} · path: {Camera.MediaMtxPath} · backend: {Camera.PreferredBackend}/{Camera.SourceMode} · " +
+        $"host: {Camera.Host} · state: {Camera.RuntimeState}" +
+        (Camera.Enabled ? "" : " (disabled)");
     public string EnableLabel => Camera.Enabled ? "Disable" : "Enable";
     public string Status { get => _status; private set => SetField(ref _status, value); }
+    public string DetectorState { get => _detectorState; private set => SetField(ref _detectorState, value); }
+    public string RecordingState { get => _recordingState; private set => SetField(ref _recordingState, value); }
     public string TestResult { get => _testResult; private set => SetField(ref _testResult, value); }
 
     public RelayCommand PreviewCommand { get; }
@@ -470,6 +613,16 @@ public sealed class CameraRowViewModel : ObservableObject
     public RelayCommand EditCommand { get; }
     public AsyncRelayCommand ApplyCommand { get; }
     public AsyncRelayCommand DeleteCommand { get; }
+    public RelayCommand SelectCommand { get; }
+    public AsyncRelayCommand StartDetectionCommand { get; }
+    public AsyncRelayCommand StopDetectionCommand { get; }
+    public AsyncRelayCommand RestartDetectionCommand { get; }
+
+    public void NotifySelectionChanged()
+    {
+        IsSelected = _parent.Session.IsSelected(Camera.CameraId);
+        OnPropertyChanged(nameof(Title));
+    }
 
     public async Task RefreshAsync(IMediaMtxApi api)
     {
@@ -484,6 +637,9 @@ public sealed class CameraRowViewModel : ObservableObject
                 : "NOT READY",
             null => "MediaMTX?",
         };
+        var rec = await api.IsPathRecordingEnabledAsync(path);
+        RecordingState = rec switch { true => "REC ON", false => "REC OFF", _ => "REC ?" };
+        DetectorState = _parent.GetDetectorStateLabel(Camera);
         OpenInMonitorCommand.RaiseCanExecuteChanged();
     }
 
