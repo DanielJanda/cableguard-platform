@@ -1,0 +1,23 @@
+###############################################
+# EXAMPLE ONLY — merge into mediamtx.local.yml via script.
+# Synthetic H.264 test patterns for Gate 2 multi-camera grid.
+# No camera credentials. DO NOT point at physical cameras.
+###############################################
+
+# paths:  (append under existing paths:)
+#   office-test-grid-2:
+#     runOnInit: >
+#       ffmpeg -hide_banner -loglevel error -re
+#       -f lavfi -i testsrc2=size=1280x720:rate=25:duration=3600
+#       -f lavfi -i sine=frequency=880:sample_rate=44100
+#       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 50 -bf 0
+#       -c:a aac -f rtsp rtsp://127.0.0.1:8554/office-test-grid-2
+#     runOnInitRestart: yes
+#   office-test-grid-3:
+#     runOnInit: >
+#       ffmpeg -hide_banner -loglevel error -re
+#       -f lavfi -i smptebars=size=1280x720:rate=25
+#       -f lavfi -i sine=frequency=660:sample_rate=44100
+#       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 50 -bf 0
+#       -c:a aac -f rtsp rtsp://127.0.0.1:8554/office-test-grid-3
+#     runOnInitRestart: yes

@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "layout_id": "office-lab-three-camera",
+  "layout_type": "3",
+  "site_id": "office-test",
+  "site_display_name": "Office test",
+  "lift_id": "office-lab",
+  "lift_display_name": "Testovací lanovka – kancelář",
+  "primary_camera_id": "office-63",
+  "alarm_focus_policy": "highlight_keep_others",
+  "cameras": [
+    {
+      "camera_id": "office-63",
+      "display_name": "Kancelářská kamera",
+      "location_role": "upper_station",
+      "environment": "test",
+      "mediamtx_path": "office-test-camera",
+      "whep_path": "/office-test-camera/whep",
+      "monitor_visible": true,
+      "primary": true,
+      "synthetic": false,
+      "recording_state": "RECORDING",
+      "stream_hint": "UNKNOWN",
+      "pipelines": [
+        {
+          "pipeline_id": "fall-office",
+          "detector_type": "fall",
+          "display_name": "Pád",
+          "state": "READY",
+          "event_type": "FALL_DETECTED",
+          "is_test": true
+        },
+        {
+          "pipeline_id": "restraint-office-placeholder",
+          "detector_type": "restraint",
+          "display_name": "Zábrany",
+          "state": "NOT_IMPLEMENTED",
+          "event_type": "RESTRAINT_ANOMALY",
+          "is_test": true
+        }
+      ]
+    },
+    {
+      "camera_id": "office-test-2",
+      "display_name": "Testovací kamera 2",
+      "location_role": "lower_station",
+      "environment": "test",
+      "mediamtx_path": "office-test-grid-2",
+      "whep_path": "/office-test-grid-2/whep",
+      "monitor_visible": true,
+      "primary": false,
+      "synthetic": true,
+      "recording_state": "OFF",
+      "stream_hint": "UNKNOWN",
+      "pipelines": [
+        {
+          "pipeline_id": "fall-office-test-2",
+          "detector_type": "fall",
+          "display_name": "Pád",
+          "state": "NOT_CONFIGURED",
+          "event_type": "FALL_DETECTED",
+          "is_test": true
+        }
+      ]
+    },
+    {
+      "camera_id": "office-test-3",
+      "display_name": "Testovací kamera 3",
+      "location_role": "restraint_check",
+      "environment": "test",
+      "mediamtx_path": "office-test-grid-3",
+      "whep_path": "/office-test-grid-3/whep",
+      "monitor_visible": true,
+      "primary": false,
+      "synthetic": true,
+      "recording_state": "OFF",
+      "stream_hint": "UNKNOWN",
+      "pipelines": [
+        {
+          "pipeline_id": "restraint-office-test-3",
+          "detector_type": "restraint",
+          "display_name": "Zábrany",
+          "state": "NOT_IMPLEMENTED",
+          "event_type": "RESTRAINT_ANOMALY",
+          "is_test": true
+        }
+      ]
+    }
+  ]
+}
