@@ -32,11 +32,12 @@ kamera
 ### Production vs diagnostic (ADR-010)
 
 - **Operator video:** camera → MediaMTX → WHEP → Monitor
-- **Detector video (provisional production):** camera → MediaMTX RTSP logical path → PyAV latest-frame → detector
-- **Lab-proven path:** office `.63` direct → PyAV (operator visual **A**)
-- **Zahrádky visual:** PENDING on-site (cannot confirm remotely)
+- **Detector video (production default):** camera → MediaMTX RTSP logical path → PyAV latest-frame → detector (`pyav_rtsp` + `mediamtx`)
+- **Lab-proven path:** office `.63` → PyAV RAW + annotated (operator visual **PASS**)
+- **Zahrádky visual:** DEFERRED — ON-SITE COMMISSIONING (not FAIL/BLOCKED; automated soak/recovery PASS)
+- **Direct PyAV:** diagnostic / emergency profile only
 - **OpenCV VideoCapture:** diagnostický fallback only (~1 s lag proven on office `.63`)
-- **GStreamer / DeepStream:** not introduced — PyAV sufficient for office acceptance
+- **GStreamer / DeepStream:** not introduced — PyAV sufficient for software acceptance
 - Inference and display were **not** the source of the original ~1 s lag (RAW=ANNOTATED lineage)
 
 ## Proč prohlížeč nepoužívá RTSP přímo
