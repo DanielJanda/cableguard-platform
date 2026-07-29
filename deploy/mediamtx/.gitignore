@@ -1,3 +1,9 @@
 # Local MediaMTX secrets and machine-specific config (never commit)
 mediamtx.local.yml
 *.local.yml
+
+# Backup copies of local config — often still contain RTSP credentials
+*.bak
+*.bak-*
+*.yml.bak
+*.yml.bak-*
