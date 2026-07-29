@@ -1,0 +1,25 @@
+###############################################
+# EXAMPLE ONLY — office rolling recording overlay (MediaMTX v1.11.3)
+# Apply to gitignored mediamtx.local.yml via scripts/enable_office_rolling_recording.ps1
+# Never commit real RTSP sources or credentials.
+###############################################
+
+# Global (playback localhost-only)
+playback: yes
+playbackAddress: 127.0.0.1:9996
+
+paths:
+  office-test-camera:
+    # source: ... (unchanged from local config)
+    record: yes
+    # Absolute path recommended; %path / strftime tokens required for playback
+    recordPath: C:/Users/mega/Documents/cableguard-platform/runtime/recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+    recordFormat: fmp4
+    recordPartDuration: 1s
+    # NOTE: recordMaxPartSize does NOT exist in MediaMTX v1.11.3 — part size is time-bounded
+    recordSegmentDuration: 30s
+    recordDeleteAfter: 10m
+
+  # Production paths must keep record: no / omitted until explicit ops decision
+  zahradky-horni-stanice:
+    record: no
