@@ -207,3 +207,8 @@ Postupovat od zdroje k prohlížeči — v každém kroku se rozhodne, kde je z�
 2. **Event Core** — `GET /api/v1/events?limit=5` obsahuje event? Ne → problém v ingestu; ano → pokračovat.
 3. **WebSocket** — stránka `/system` v monitoru ukazuje WS připojeno? Ne → `VITE_WS_URL=ws://10.6.1.40:8000/ws/v1` v env profilu + CORS Event Core.
 4. **Frontend** — event chodí (vidět v `/events`), ale overlay se neotvírá → zkontrolovat, že event má `severity=alarm|critical` a `event_type` fall pro danou stanici; konzole prohlížeče.
+
+
+## Zahrádky on-site commissioning
+
+Post-merge checklist: [zahradky-onsite-commissioning-checklist.md](../operations/zahradky-onsite-commissioning-checklist.md). Not a software release blocker.

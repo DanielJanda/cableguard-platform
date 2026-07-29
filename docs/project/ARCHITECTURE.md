@@ -123,3 +123,7 @@ Hodnoceno podle reálného toku `RTSP kamera → MediaMTX → WHEP/WebRTC → br
 Známá omezení v našem kontextu: single-instance (bez HA) — akceptovatelné pro jedno stanoviště; HEVC hlavní streamy kamer nejsou browser-kompatibilní — řešeno volbou H.264 substreamů, ne transkódováním.
 
 **Alternativu má smysl zvažovat pouze pokud** vznikne konkrétní požadavek, který MediaMTX neřeší: serverové transkódování HEVC→H.264, SFU pro desítky současných diváků, nebo nativní cloud distribuce. Nic z toho dnes není v zadání.
+
+## Detector video ingest (ADR-010)
+
+Production: MediaMTX logical RTSP → `PyAvRtspLatestFrameReader` (latest-frame slot) → fall detector. Operator video remains MediaMTX → WHEP.

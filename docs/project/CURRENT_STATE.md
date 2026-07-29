@@ -37,17 +37,18 @@ Chrome kiosk: `scripts/manage_operator_kiosk.ps1` → Task `CableGuardOperatorKi
 - Ověřené rozlišení v prohlížeči: **1280×720 @ ~20 FPS**
 - RTSP credentials pouze v gitignored `deploy/mediamtx/mediamtx.local.yml` — nikdy v Gitu ani frontendu
 
-### Detector video ingest (2026-07-29)
+### Detector ingest acceptance (2026-07-29)
 
-| Item | Stav |
+| Gate | Status |
 |---|---|
-| OpenCV direct RTSP ~1 s lag (office `.63`) | CONFIRMED (lineage RAW=ANNOTATED) |
-| PyAV RAW + annotated vs WHEP (office `.63`) | CONFIRMED operator **A** (realtime / much better) |
-| PyAV on production Zahrádky (MediaMTX vs direct) | **PENDING** manual visual acceptance |
-| Control Center default launch profile (examples) | `pyav_rtsp` + `source_mode=mediamtx` |
-| Fall algorithm / golden master | Unchanged |
+| OFFICE .63 VISUAL ACCEPTANCE | **PASS** (PyAV RAW + annotated realtime) |
+| ZAHRÁDKY VISUAL ACCEPTANCE | **DEFERRED — ON-SITE COMMISSIONING** (not FAIL/BLOCKED) |
+| Zahrádky MediaMTX PyAV 30 min soak | **PASS** (automated) |
+| MediaMTX restart recovery | **PASS** (session bump ~4 s) |
+| Preferred production input | `pyav_rtsp` + `source_mode=mediamtx` → `zahradky-horni-stanice` |
+| Direct PyAV | Diagnostic / emergency fallback only |
+| OpenCV RTSP | Diagnostic fallback only (~1 s lag on office) |
 
-See ADR-010 in `DECISIONS.md` and detector audit `docs/audits/project-audit-after-pyav-2026-07-29.md`.
 
 ### Monitor (main)
 

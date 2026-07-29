@@ -23,3 +23,7 @@ Verified against: production Chrome kiosk sprint
 | **EventCorePublisher** | detector (`src/cableguard/events/event_core/` na `feature/fall-event-core-integration`) | Python + httpx, outbox/retry | — | HTTP publikace do `POST /api/v1/events` + heartbeaty | fall event | REST volání s `X-API-Key` | env (ingest key) | EXPERIMENTAL (samostatná větev; na aktuální pracovní větvi jen stub) | testy na dané větvi |
 | **USB/relay subsystem** | detector (`advantech_relay.py`, `relay_server.py`, `zahradky_safety/`) | pythonnet + Advantech USB-4761 | `relay_server.py` | Fyzické relé pro barrier detektory (ne fall) | detekční signály barrier | relé sepnutí | env + safety-invariants.md | IMPLEMENTED (barrier produkce, mimo fall scope) | `test_fake_relay_client.py` |
 | **Admin Studio (Control Center)** | platform (`tools/control-center/`) | C# / .NET 8 / WPF | `CableGuard.ControlCenter.exe` | Lokální admin/test GUI: OPERATIONS + TEST LAB + **Video Lab** (metrics, manual G2G, soak, qualification) | health probes, PowerShell scripts, MediaMTX API, localhost metrics `:9998`, gitignored `runtime/config/` | start/stop, stream switch+rollback, detector launch, Video Lab reports | examples v `tools/control-center/config/` | IMPLEMENTED (2.5/2.6 DONE; 2.6b Video Lab in progress) | xUnit (63 tests) |
+
+## Fall detector video backend
+
+Default production profile: `pyav_rtsp` + `mediamtx`. Control Center Overview can show Event Core `video_input` health when heartbeats are enabled.

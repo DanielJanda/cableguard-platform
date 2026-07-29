@@ -61,3 +61,7 @@ Mitigace hranice: přístup do firemní LAN je řízen mimo CableGuard (síťov�
 ## Explicitní omezení
 
 **Současný internal-LAN runtime není navržen jako veřejná internetová služba.** Vystavení do internetu bez Phase 9 (auth GET/WS, TLS, reverse proxy, rate limiting) je zakázáno. Public HTTPS experimenty jsou DEFERRED (platform PR #6, monitor PR #5) a nemergují se.
+
+## MediaMTX local backups
+
+Never commit `*.bak*` / `mediamtx.local.yml.*` — may contain live RTSP sources. Gitignore hardened under `deploy/mediamtx/`.

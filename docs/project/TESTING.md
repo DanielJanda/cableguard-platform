@@ -106,3 +106,7 @@ Checklist v OPERATIONS.md („Test z druhého PC“). **Naposledy potvrzeno uži
 - **Headless WebRTC:** Playwright/headless Chromium neumí plný ICE/dekódování spolehlivě — živé WHEP testy používají reálný Edge s persistent kontextem a i tak občas visí (nutný timeout/kill). Vizuální potvrzení člověkem zůstává součástí acceptance.
 - **Video-level parita detektoru** (frame pipeline vs. legacy) není automatizovaná — golden master je čistě numerický.
 - `verify:secrets` skenuje jen `.output` bundle — server-side kód (BFF) klíč obsahovat smí.
+
+## Zahrádky on-site commissioning
+
+Visual realtime check is deferred to first station visit; see operations checklist. Automated MediaMTX/PyAV soak is required for software release.
