@@ -29,6 +29,16 @@ kamera
 - **PTS/DTS:** stream timeline z libav — **ne** camera wall-clock, dokud není prokázána synchronizace.
 - Fall algoritmus nezná PyAV detaily — jen `FrameReader` / BGR frame.
 
+### Production vs diagnostic (ADR-010)
+
+- **Operator video:** camera → MediaMTX → WHEP → Monitor
+- **Detector video (provisional production):** camera → MediaMTX RTSP logical path → PyAV latest-frame → detector
+- **Lab-proven path:** office `.63` direct → PyAV (operator visual **A**)
+- **Zahrádky visual:** PENDING on-site (cannot confirm remotely)
+- **OpenCV VideoCapture:** diagnostický fallback only (~1 s lag proven on office `.63`)
+- **GStreamer / DeepStream:** not introduced — PyAV sufficient for office acceptance
+- Inference and display were **not** the source of the original ~1 s lag (RAW=ANNOTATED lineage)
+
 ## Proč prohlížeč nepoužívá RTSP přímo
 
 Prohlížeče RTSP protokol **nepodporují** (žádné nativní API, RTSP typicky vyžaduje TCP 554/UDP RTP a credentials). Přímé použití by znamenalo:
