@@ -283,12 +283,12 @@ public sealed class ComponentFactory
 
         return new ServiceComponent(
             ComponentId.Detector, "Detektor pádu", configured, logFile,
-            statusFunc: ct =>
+            statusFunc: async ct =>
             {
                 if (!configured || primary is null)
-                    return Task.FromResult(ComponentSnapshot.NotConfigured(
+                    return ComponentSnapshot.NotConfigured(
                         ComponentId.Detector,
-                        "NOT CONFIGURED — apps/zahradky_horni_pad.py not found (need detector feature/mediamtx-input-profile or later)"));
+                        "NOT CONFIGURED — apps/zahradky_horni_pad.py not found (need detector feature/mediamtx-input-profile or later)");
 
                 var pid = _detectors?.FindPid(primary)
                           ?? _processes.FindProcessByCommandLineHint(primary.ProcessHint);
@@ -296,12 +296,58 @@ public sealed class ComponentFactory
                 if (string.IsNullOrWhiteSpace(profile)) profile = "pyav_rtsp";
                 var sourceMode = primary.SourceMode;
                 if (string.IsNullOrWhiteSpace(sourceMode)) sourceMode = "mediamtx";
+
+                DetectorVideoHealth? video = null;
+                try
+                {
+                    var statusUrl = $"{_config.EventCoreBaseLocal.TrimEnd('/')}/api/v1/status";
+                    var body = await _prober.GetBodyAsync(statusUrl, ct);
+                    if (string.IsNullOrWhiteSpace(body) && _config.UseProductionMonitor)
+                    {
+                        body = await _prober.GetBodyAsync(
+                            $"{_config.MonitorBaseLocal.TrimEnd('/')}/api/v1/status", ct);
+                    }
+                    video = DetectorVideoHealthParser.TryParse(
+                        body,
+                        preferredServiceId: null,
+                        inputStream: primary.InputStream);
+                }
+                catch
+                {
+                    video = null;
+                }
+
+                var deep = video?.Available == true;
+                var videoOk = deep &&
+                              (string.IsNullOrWhiteSpace(video!.ConnectionState) ||
+                               video.ConnectionState is "connected" or "starting" or "reconnecting");
                 var status = StatusEvaluators.EvaluateDetector(
-                    new ProbeResults(pid is not null, DeepHealthAvailable: false));
-                var detail = pid is not null
-                    ? $"RUNNING PID {pid} · stream={primary.InputStream} · backend={profile} · source={sourceMode} · deep health via Event Core heartbeat when enabled"
-                    : $"Stopped · instance={primary.Id} · stream={primary.InputStream} · backend={profile}";
-                return Task.FromResult(new ComponentSnapshot(ComponentId.Detector, status, detail, pid));
+                    new ProbeResults(
+                        pid is not null,
+                        HttpHealthy: deep ? videoOk : null,
+                        DeepHealthAvailable: deep));
+
+                string detail;
+                if (pid is null)
+                {
+                    detail = $"Stopped · instance={primary.Id} · stream={primary.InputStream} · backend={profile}";
+                }
+                else if (deep && video is not null)
+                {
+                    var err = string.IsNullOrWhiteSpace(video.LastErrorRedacted) ? "none" : video.LastErrorRedacted;
+                    detail =
+                        $"RUNNING PID {pid} · stream={primary.InputStream} · backend={video.Backend} · " +
+                        $"source={video.SourceMode} · decoded_fps={video.DecodedFps?.ToString("0.0") ?? "n/a"} · " +
+                        $"latest_age_ms={video.LatestFrameAgeMs?.ToString("0") ?? "n/a"} · " +
+                        $"reconnects={video.ReconnectCount?.ToString() ?? "n/a"} · last_error={err}";
+                }
+                else
+                {
+                    detail =
+                        $"RUNNING PID {pid} · stream={primary.InputStream} · backend={profile} · source={sourceMode} · " +
+                        "deep health NOT AVAILABLE (no Event Core video_input heartbeat yet)";
+                }
+                return new ComponentSnapshot(ComponentId.Detector, status, detail, pid);
             },
             startFunc: async ct =>
             {
@@ -335,6 +381,8 @@ public sealed class ComponentFactory
             DisplayName = "Detektor pádu – Zahrádky horní",
             DetectorType = "fall",
             InputStream = _config.ProductionStream,
+            InputProfile = "pyav_rtsp",
+            SourceMode = "mediamtx",
             ScriptRelative = "apps/zahradky_horni_pad.py",
             ProcessHint = "zahradky_horni_pad",
             Enabled = true,

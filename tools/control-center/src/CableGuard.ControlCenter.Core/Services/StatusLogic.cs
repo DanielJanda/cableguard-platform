@@ -49,8 +49,8 @@ public static class StatusEvaluators
 
     public static ComponentStatus EvaluateDetector(ProbeResults p)
     {
-        // Deep health (Event Core heartbeat) is NOT AVAILABLE until Phase 4 lands on main;
-        // until then the honest answer is process-level only.
+        // Process required. When Event Core exposes video_input, DeepHealthAvailable=true
+        // and HttpHealthy reflects connection_state / readiness.
         if (!p.ProcessAlive) return ComponentStatus.Stopped;
         if (p.DeepHealthAvailable == true && p.HttpHealthy == false) return ComponentStatus.Degraded;
         return ComponentStatus.Running;
