@@ -1,0 +1,13 @@
+# Redacted runtime probes — 2026-07-29
+
+```text
+Event Core GET /api/v1/health → ok=true service=cableguard-platform
+MediaMTX GET /v3/paths/list → itemCount=6
+  ready: office-test-camera, office-test-grid-2, office-test-grid-3,
+         zahradky-horni-stanice, zahradky-horni-stanice-90, zahradky-horni-stanice-92
+Monitor GET http://127.0.0.1:8081/live → 200
+(No credentials, tokens, or RTSP URLs recorded.)
+```
+
+Screenshots for Monitor Gate 2 live in monitor repo:
+`cableguard-monitor/docs/gate2-evidence/screenshots/` (referenced, not copied here to avoid duplication).
