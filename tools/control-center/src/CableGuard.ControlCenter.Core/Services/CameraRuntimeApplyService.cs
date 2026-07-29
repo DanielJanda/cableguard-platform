@@ -79,9 +79,69 @@ public sealed class CameraRuntimeApplyService
     {
         var user = Uri.EscapeDataString(username);
         var pass = Uri.EscapeDataString(password);
-        var profile = cam.Profile.Trim().TrimStart('/');
+        var profile = ResolveRtspPath(cam).Trim().TrimStart('/');
         var transport = string.Equals(cam.Transport, "udp", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
         return $"rtsp://{user}:{pass}@{cam.Host}:{cam.RtspPort}/{profile}?rtsp_transport={transport}";
+    }
+
+    /// <summary>Prefer selected CameraStreamProfile.RtspPath; fall back to legacy Profile.</summary>
+    public static string ResolveRtspPath(CameraEntry cam)
+    {
+        if (!string.IsNullOrWhiteSpace(cam.SelectedProfileId))
+        {
+            var sel = cam.StreamProfiles.FirstOrDefault(p => p.ProfileId == cam.SelectedProfileId);
+            if (sel is not null && !string.IsNullOrWhiteSpace(sel.RtspPath))
+                return sel.RtspPath;
+        }
+        return cam.Profile;
+    }
+
+    public static void SelectProfile(CameraEntry cam, CameraStreamProfile profile)
+    {
+        cam.SelectedProfileId = profile.ProfileId;
+        cam.Profile = string.IsNullOrWhiteSpace(profile.RtspPath)
+            ? CameraProfileAuditService.RtspPathForChannel(profile.ChannelId)
+            : profile.RtspPath;
+        if (cam.StreamProfiles.All(p => p.ProfileId != profile.ProfileId))
+            cam.StreamProfiles.Add(profile);
+    }
+
+    /// <summary>
+    /// Apply a specific stream profile to an arbitrary MediaMTX path (side-by-side main/sub).
+    /// Does not change the camera's primary MediaMtxPath unless path equals SuggestPath(cam).
+    /// </summary>
+    public async Task<CameraApplyResult> ApplyPathAsync(
+        CameraEntry cam,
+        CameraStreamProfile profile,
+        string mediaMtxPath,
+        CancellationToken ct = default)
+    {
+        var previousProfile = cam.Profile;
+        var previousSelected = cam.SelectedProfileId;
+        var previousPath = cam.MediaMtxPath;
+        try
+        {
+            SelectProfile(cam, profile);
+            cam.MediaMtxPath = mediaMtxPath;
+            var result = await ApplyAsync(cam, null, ct).ConfigureAwait(false);
+            if (mediaMtxPath != previousPath && !string.IsNullOrWhiteSpace(previousPath))
+            {
+                // Restore primary path on the camera entry; logical stream owns the alt path.
+                cam.MediaMtxPath = previousPath;
+            }
+            SyncLogicalStreamProfile(cam, profile, mediaMtxPath);
+            return result;
+        }
+        finally
+        {
+            // Keep selected profile if apply succeeded for primary; otherwise restore.
+            if (!string.Equals(mediaMtxPath, previousPath, StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(previousProfile))
+            {
+                cam.Profile = previousProfile;
+                cam.SelectedProfileId = previousSelected;
+            }
+        }
     }
 
     public static string RedactRtsp(string url) =>
@@ -280,6 +340,9 @@ public sealed class CameraRuntimeApplyService
             var knownCams = registry.Cameras.Select(c => c.CameraId).Append(cam.CameraId).Distinct().ToList();
 
             var doc = StreamsService.Load(_config.StreamsJsonPath);
+            var profile = cam.StreamProfiles.FirstOrDefault(p => p.ProfileId == cam.SelectedProfileId)
+                          ?? cam.StreamProfiles.FirstOrDefault(p =>
+                              string.Equals(p.RtspPath, cam.Profile, StringComparison.OrdinalIgnoreCase));
             var existing = doc.Streams.FirstOrDefault(s => s.MediaMtxPath == path || s.StreamId == path);
             if (existing is null)
             {
@@ -289,6 +352,10 @@ public sealed class CameraRuntimeApplyService
                     DisplayName = cam.DisplayName,
                     MediaMtxPath = path,
                     CameraId = cam.CameraId,
+                    ProfileId = profile?.ProfileId ?? cam.SelectedProfileId,
+                    StreamType = profile?.StreamType ?? "",
+                    ChannelId = profile?.ChannelId ?? CameraProfileAuditService.ParseChannel(cam.Profile),
+                    ProfileFingerprint = profile?.ConfigurationFingerprint ?? "",
                     Enabled = true,
                     IsProduction = false,
                 });
@@ -298,6 +365,20 @@ public sealed class CameraRuntimeApplyService
                 existing.CameraId = cam.CameraId;
                 existing.MediaMtxPath = path;
                 existing.Enabled = true;
+                if (profile is not null)
+                {
+                    existing.ProfileId = profile.ProfileId;
+                    existing.StreamType = profile.StreamType;
+                    existing.ChannelId = profile.ChannelId;
+                    existing.ProfileFingerprint = profile.ConfigurationFingerprint;
+                }
+                else if (existing.ChannelId is null)
+                {
+                    existing.ChannelId = CameraProfileAuditService.ParseChannel(cam.Profile);
+                    existing.StreamType = existing.ChannelId is int ch
+                        ? CameraProfileAuditService.StreamTypeForChannel(ch)
+                        : existing.StreamType;
+                }
                 if (string.IsNullOrWhiteSpace(existing.DisplayName))
                     existing.DisplayName = cam.DisplayName;
             }
@@ -319,6 +400,48 @@ public sealed class CameraRuntimeApplyService
         catch (Exception ex)
         {
             _logger.Warn($"[CAMERA APPLY] streams.json sync warning: {ex.Message}");
+        }
+    }
+
+    private void SyncLogicalStreamProfile(CameraEntry cam, CameraStreamProfile profile, string path)
+    {
+        try
+        {
+            var registry = CameraRegistryService.Load(_config.CamerasJsonPath);
+            var knownCams = registry.Cameras.Select(c => c.CameraId).Append(cam.CameraId).Distinct().ToList();
+            var doc = StreamsService.Load(_config.StreamsJsonPath);
+            var existing = doc.Streams.FirstOrDefault(s => s.MediaMtxPath == path || s.StreamId == path);
+            if (existing is null)
+            {
+                doc.Streams.Add(new LogicalStream
+                {
+                    StreamId = path,
+                    DisplayName = $"{cam.DisplayName} ({profile.StreamType.ToUpperInvariant()} {profile.ChannelId})",
+                    MediaMtxPath = path,
+                    CameraId = cam.CameraId,
+                    ProfileId = profile.ProfileId,
+                    StreamType = profile.StreamType,
+                    ChannelId = profile.ChannelId,
+                    ProfileFingerprint = profile.ConfigurationFingerprint,
+                    Enabled = true,
+                    IsProduction = false,
+                });
+            }
+            else
+            {
+                existing.CameraId = cam.CameraId;
+                existing.MediaMtxPath = path;
+                existing.ProfileId = profile.ProfileId;
+                existing.StreamType = profile.StreamType;
+                existing.ChannelId = profile.ChannelId;
+                existing.ProfileFingerprint = profile.ConfigurationFingerprint;
+                existing.Enabled = true;
+            }
+            StreamsService.Save(doc, _config.StreamsJsonPath, knownCams);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"[CAMERA APPLY] logical stream profile sync: {ex.Message}");
         }
     }
 

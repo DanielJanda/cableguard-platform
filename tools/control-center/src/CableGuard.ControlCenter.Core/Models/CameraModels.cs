@@ -14,6 +14,7 @@ public sealed class CameraEntry
     [JsonPropertyName("station_id")] public string StationId { get; set; } = "";
     [JsonPropertyName("host")] public string Host { get; set; } = "";
     [JsonPropertyName("rtsp_port")] public int RtspPort { get; set; } = 554;
+    /// <summary>Legacy single RTSP path (e.g. Streaming/Channels/102). Prefer SelectedProfileId.</summary>
     [JsonPropertyName("profile")] public string Profile { get; set; } = "";
     [JsonPropertyName("transport")] public string Transport { get; set; } = "tcp";
     [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
@@ -24,6 +25,15 @@ public sealed class CameraEntry
     [JsonPropertyName("runtime_state")] public string RuntimeState { get; set; } = "configured_not_ready";
     /// <summary>Safe operator-facing last apply message (no credentials).</summary>
     [JsonPropertyName("last_apply_message")] public string LastApplyMessage { get; set; } = "";
+
+    [JsonPropertyName("model")] public string Model { get; set; } = "";
+    [JsonPropertyName("firmware")] public string Firmware { get; set; } = "";
+    [JsonPropertyName("manufacturer")] public string Manufacturer { get; set; } = "";
+    /// <summary>Active stream profile id (CameraStreamProfile.ProfileId).</summary>
+    [JsonPropertyName("selected_profile_id")] public string SelectedProfileId { get; set; } = "";
+    [JsonPropertyName("validated_profile")] public ValidatedCameraProfile? ValidatedProfile { get; set; }
+    [JsonPropertyName("stream_profiles")] public List<CameraStreamProfile> StreamProfiles { get; set; } = new();
+    [JsonPropertyName("last_profile_audit_at")] public string? LastProfileAuditAt { get; set; }
 }
 
 /// <summary>Legacy inline mapping kept for cameras.json v1 compatibility.</summary>
@@ -35,7 +45,7 @@ public sealed class StreamMapping
 
 public sealed class CameraRegistryDocument
 {
-    [JsonPropertyName("version")] public int Version { get; set; } = 1;
+    [JsonPropertyName("version")] public int Version { get; set; } = 2;
     [JsonPropertyName("cameras")] public List<CameraEntry> Cameras { get; set; } = new();
     /// <summary>Deprecated — prefer streams.json. Still loaded for migration.</summary>
     [JsonPropertyName("stream_mappings")] public List<StreamMapping> StreamMappings { get; set; } = new();
@@ -48,12 +58,18 @@ public sealed class LogicalStream
     [JsonPropertyName("display_name")] public string DisplayName { get; set; } = "";
     [JsonPropertyName("mediamtx_path")] public string MediaMtxPath { get; set; } = "";
     [JsonPropertyName("camera_id")] public string CameraId { get; set; } = "";
+    /// <summary>Bound CameraStreamProfile.ProfileId (channel 101/102/103).</summary>
+    [JsonPropertyName("profile_id")] public string ProfileId { get; set; } = "";
+    [JsonPropertyName("stream_type")] public string StreamType { get; set; } = "";
+    [JsonPropertyName("channel_id")] public int? ChannelId { get; set; }
     [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
     [JsonPropertyName("is_production")] public bool IsProduction { get; set; }
+    /// <summary>Fingerprint of camera+channel+codec+res+fps used when ROI/G2G were captured.</summary>
+    [JsonPropertyName("profile_fingerprint")] public string ProfileFingerprint { get; set; } = "";
 }
 
 public sealed class StreamsDocument
 {
-    [JsonPropertyName("version")] public int Version { get; set; } = 1;
+    [JsonPropertyName("version")] public int Version { get; set; } = 2;
     [JsonPropertyName("streams")] public List<LogicalStream> Streams { get; set; } = new();
 }

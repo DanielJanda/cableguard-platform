@@ -15,6 +15,8 @@ public sealed class CamerasViewModel : ObservableObject
     private readonly ICredentialStore _credentials;
     private readonly StreamSwitchService _switchService;
     private readonly CameraRuntimeApplyService _applyService;
+    private readonly CameraProfileAuditService _profileAudit;
+    private readonly CameraValidatedProfileApplyService _validatedApply;
 
     private string _registryStatus = "";
     private string _switchProgress = "";
@@ -26,7 +28,9 @@ public sealed class CamerasViewModel : ObservableObject
         IMediaMtxApi api,
         ICredentialStore credentials,
         StreamSwitchService switchService,
-        CameraRuntimeApplyService applyService)
+        CameraRuntimeApplyService applyService,
+        CameraProfileAuditService? profileAudit = null,
+        CameraValidatedProfileApplyService? validatedApply = null)
     {
         _config = config;
         _logger = logger;
@@ -34,8 +38,12 @@ public sealed class CamerasViewModel : ObservableObject
         _credentials = credentials;
         _switchService = switchService;
         _applyService = applyService;
+        _profileAudit = profileAudit ?? new CameraProfileAuditService(credentials, logger);
+        _validatedApply = validatedApply ?? new CameraValidatedProfileApplyService(
+            credentials, logger, _profileAudit, applyService);
         ReloadCommand = new AsyncRelayCommand(ReloadAsync);
         AddCommand = new RelayCommand(AddCamera);
+        AuditAllCommand = new AsyncRelayCommand(AuditAllAsync);
         _ = ReloadAsync();
     }
 
@@ -44,6 +52,7 @@ public sealed class CamerasViewModel : ObservableObject
     public string SwitchProgress { get => _switchProgress; private set => SetField(ref _switchProgress, value); }
     public AsyncRelayCommand ReloadCommand { get; }
     public RelayCommand AddCommand { get; }
+    public AsyncRelayCommand AuditAllCommand { get; }
     public CameraRegistryDocument Registry => _registry;
 
     public async Task ReloadAsync()
@@ -60,11 +69,171 @@ public sealed class CamerasViewModel : ObservableObject
 
         var primary = CameraRegistryService.ResolvePrimaryCamera(_registry, _config.ProductionStream);
         foreach (var camera in _registry.Cameras)
+        {
+            CameraProfileAuditService.EnsureMigrated(camera);
             Cameras.Add(new CameraRowViewModel(camera, camera.CameraId == primary?.CameraId, this));
+        }
 
         RegistryStatus = $"{_registry.Cameras.Count} kamer, produkční stream '{_config.ProductionStream}' → {primary?.DisplayName ?? "?"}";
         foreach (var row in Cameras)
             await row.RefreshAsync(_api);
+    }
+
+    public async Task AuditAllAsync()
+    {
+        SwitchProgress = "Auditing stream profiles…\n";
+        foreach (var cam in _registry.Cameras.Where(c => c.Enabled))
+        {
+            try
+            {
+                await _profileAudit.AuditCameraAsync(cam);
+                SwitchProgress += $"{cam.CameraId}: {cam.StreamProfiles.Count} profiles, model={cam.Model}\n";
+            }
+            catch (Exception ex)
+            {
+                SwitchProgress += $"{cam.CameraId}: FAIL {ex.Message}\n";
+            }
+        }
+        Persist();
+        await ReloadAsync();
+    }
+
+    public async Task AuditCameraAsync(CameraEntry camera)
+    {
+        SwitchProgress = $"Auditing {camera.CameraId}…\n";
+        try
+        {
+            await _profileAudit.AuditCameraAsync(camera);
+            ReplaceInRegistry(camera);
+            Persist();
+            SwitchProgress += string.Join("\n", camera.StreamProfiles.Select(p =>
+                $"  {p.ChannelId} {p.StreamType.ToUpperInvariant()}: {p.AuditStatus} — {p.AuditMessage}"));
+        }
+        catch (Exception ex)
+        {
+            SwitchProgress += $"FAIL: {ex.Message}";
+            MessageBox.Show(ex.Message, "Profile audit", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        await ReloadAsync();
+    }
+
+    public async Task SelectProfileAsync(CameraEntry camera, CameraStreamProfile profile, bool applyMediaMtx)
+    {
+        var confirm = MessageBox.Show(
+            $"Změnit vybraný profil kamery '{camera.DisplayName}' na {profile.ChannelId} {profile.StreamType.ToUpperInvariant()}?\n" +
+            $"RTSP: {profile.RtspPath}\n\n" +
+            (applyMediaMtx
+                ? $"Apply MediaMTX path '{CameraRuntimeApplyService.SuggestPath(camera)}' na tento profil."
+                : "Jen registry (bez MediaMTX)."),
+            "Select stream profile",
+            MessageBoxButton.OKCancel,
+            camera.IsProductionLike() ? MessageBoxImage.Warning : MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.OK) return;
+
+        CameraRuntimeApplyService.SelectProfile(camera, profile);
+        ReplaceInRegistry(camera);
+        Persist();
+        if (applyMediaMtx)
+            await ApplyToMediaMtxAsync(camera);
+        else
+            await ReloadAsync();
+    }
+
+    public async Task CreateLogicalStreamAsync(CameraEntry camera, CameraStreamProfile profile)
+    {
+        var suggested = profile.ChannelId == 101 &&
+                        string.Equals(camera.MediaMtxPath, "office-test-camera", StringComparison.OrdinalIgnoreCase)
+            ? "office-test-camera-main"
+            : $"{CameraRuntimeApplyService.SuggestPath(camera)}-{profile.StreamType}";
+
+        var path = suggested;
+        var confirm = MessageBox.Show(
+            $"Vytvořit logical stream pro {profile.ChannelId} {profile.StreamType.ToUpperInvariant()}?\n\n" +
+            $"MediaMTX path: {path}\n" +
+            $"Kamera: {camera.CameraId}\n" +
+            $"Existující streamy kamery se nezmění.\n\n" +
+            "Pokračovat a Apply MediaMTX?",
+            "Create logical stream", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.OK) return;
+
+        if (camera.IsProductionLike())
+        {
+            var prod = MessageBox.Show(
+                "Toto vypadá jako produkční kamera. Opravdu vytvořit další path?",
+                "Production confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (prod != MessageBoxResult.Yes) return;
+        }
+
+        var result = await _applyService.ApplyPathAsync(camera, profile, path);
+        MessageBox.Show(result.Message, result.Success ? "READY" : "NOT READY",
+            MessageBoxButton.OK, result.Success ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        ReplaceInRegistry(camera);
+        Persist();
+        await ReloadAsync();
+    }
+
+    public async Task ApplyValidatedProfileAsync(CameraEntry camera, CameraStreamProfile profile)
+    {
+        var target = camera.ValidatedProfile ?? CameraProfileAuditService.CreateProvisionalBaseline(profile.ChannelId);
+        target.ChannelId = profile.ChannelId;
+        target.StreamType = profile.StreamType;
+
+        var msg =
+            $"Apply VALIDATED / PROVISIONAL CableGuard profile na ch{profile.ChannelId}?\n\n" +
+            $"{target.Encoding} {target.Width}×{target.Height} @{target.Fps}fps {target.BitrateType} {target.BitrateKbps} kb/s\n" +
+            $"Gov={target.GovLength}, smart={target.SmartCodec}, svc={target.Svc}, audio={target.Audio}\n\n" +
+            "1) capabilities check  2) backup  3) ISAPI apply  4) ffprobe  5) MediaMTX  6) rollback on fail\n\n" +
+            "PROVISIONAL — není automaticky ideální bez Video Qualification.";
+        if (camera.IsProductionLike())
+            msg = "⚠ PRODUKČNÍ KAMERA\n\n" + msg + "\n\nPotvrď dvojím Yes.";
+
+        if (MessageBox.Show(msg, "Apply validated profile", MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning) != MessageBoxResult.OK)
+            return;
+
+        if (camera.IsProductionLike() &&
+            MessageBox.Show("Druhé potvrzení: opravdu změnit produkční kameru?",
+                "Production confirmation", MessageBoxButton.YesNo, MessageBoxImage.Stop) != MessageBoxResult.Yes)
+            return;
+
+        SwitchProgress = "Applying validated profile…\n";
+        var result = await _validatedApply.ApplyAsync(
+            camera, target, confirmProduction: camera.IsProductionLike());
+        SwitchProgress += result.Message + (result.RolledBack ? " [ROLLED BACK]" : "");
+        ReplaceInRegistry(camera);
+        Persist();
+        MessageBox.Show(result.Message + (result.RolledBack ? "\n\nRollback proveden." : ""),
+            result.Success ? "OK" : "Failed",
+            MessageBoxButton.OK,
+            result.Success ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        await ReloadAsync();
+    }
+
+    public void PreviewProfile(CameraEntry camera, CameraStreamProfile profile)
+    {
+        try
+        {
+            var streams = StreamsService.Load(_config.StreamsJsonPath);
+            var bound = streams.Streams.FirstOrDefault(s =>
+                s.CameraId == camera.CameraId &&
+                (s.ProfileId == profile.ProfileId || s.ChannelId == profile.ChannelId));
+            var path = bound?.MediaMtxPath
+                       ?? (profile.ChannelId == CameraProfileAuditService.ParseChannel(camera.Profile)
+                           ? (string.IsNullOrWhiteSpace(camera.MediaMtxPath) ? camera.CameraId : camera.MediaMtxPath)
+                           : null);
+            if (path is null)
+            {
+                MessageBox.Show(
+                    $"Pro profil {profile.ChannelId} ještě neexistuje MediaMTX path.\nNejdřív Create logical stream.",
+                    "Preview", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            Process.Start(new ProcessStartInfo(_config.PreviewUrl(path)) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Preview", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     public void Persist()
@@ -101,6 +270,21 @@ public sealed class CamerasViewModel : ObservableObject
         edited.Enabled = camera.Enabled;
         edited.RuntimeState = camera.RuntimeState;
         edited.LastApplyMessage = camera.LastApplyMessage;
+        edited.StreamProfiles = camera.StreamProfiles;
+        edited.SelectedProfileId = camera.SelectedProfileId;
+        edited.ValidatedProfile = camera.ValidatedProfile;
+        edited.Model = camera.Model;
+        edited.Firmware = camera.Firmware;
+        edited.Manufacturer = camera.Manufacturer;
+        edited.LastProfileAuditAt = camera.LastProfileAuditAt;
+        // Keep Profile in sync with selected stream profile when operator edits channel text.
+        var ch = CameraProfileAuditService.ParseChannel(edited.Profile);
+        if (ch is int channel)
+        {
+            var match = edited.StreamProfiles.FirstOrDefault(p => p.ChannelId == channel);
+            if (match is not null)
+                CameraRuntimeApplyService.SelectProfile(edited, match);
+        }
         var errors = CameraRegistryService.ValidateCamera(edited);
         if (errors.Count > 0)
         {
@@ -424,6 +608,13 @@ public sealed class CamerasViewModel : ObservableObject
         MediaMtxPath = c.MediaMtxPath,
         RuntimeState = c.RuntimeState,
         LastApplyMessage = c.LastApplyMessage,
+        Model = c.Model,
+        Firmware = c.Firmware,
+        Manufacturer = c.Manufacturer,
+        SelectedProfileId = c.SelectedProfileId,
+        ValidatedProfile = c.ValidatedProfile,
+        StreamProfiles = c.StreamProfiles.ToList(),
+        LastProfileAuditAt = c.LastProfileAuditAt,
     };
 }
 
@@ -438,6 +629,10 @@ public sealed class CameraRowViewModel : ObservableObject
         Camera = camera;
         IsPrimary = isPrimary;
         _parent = parent;
+        CameraProfileAuditService.EnsureMigrated(Camera);
+        Profiles = new ObservableCollection<CameraProfileRowViewModel>(
+            Camera.StreamProfiles.OrderBy(p => p.ChannelId)
+                .Select(p => new CameraProfileRowViewModel(Camera, p, parent)));
         PreviewCommand = new RelayCommand(() => _parent.Preview(Camera));
         OpenInMonitorCommand = new RelayCommand(
             () => _parent.OpenInMonitor(Camera),
@@ -449,14 +644,17 @@ public sealed class CameraRowViewModel : ObservableObject
         EditCommand = new RelayCommand(() => _parent.EditCamera(Camera));
         ApplyCommand = new AsyncRelayCommand(() => _parent.ApplyToMediaMtxAsync(Camera));
         DeleteCommand = new AsyncRelayCommand(() => _parent.DeleteCameraAsync(Camera));
+        AuditCommand = new AsyncRelayCommand(() => _parent.AuditCameraAsync(Camera));
     }
 
     public CameraEntry Camera { get; }
     public bool IsPrimary { get; }
+    public ObservableCollection<CameraProfileRowViewModel> Profiles { get; }
     public string Title => IsPrimary ? $"{Camera.DisplayName}  ★ PRIMÁRNÍ" : Camera.DisplayName;
     public string Subtitle =>
-        $"IP: {Camera.Host}:{Camera.RtspPort}  profile: {Camera.Profile}  transport: {Camera.Transport}  " +
-        $"path: {Camera.MediaMtxPath}  state: {Camera.RuntimeState}  {(Camera.Enabled ? "" : "(disabled)")}";
+        $"IP: {Camera.Host}:{Camera.RtspPort}  model: {Camera.Model}  fw: {Camera.Firmware}  " +
+        $"selected: {Camera.SelectedProfileId}  path: {Camera.MediaMtxPath}  state: {Camera.RuntimeState}  " +
+        $"{(Camera.Enabled ? "" : "(disabled)")}";
     public string EnableLabel => Camera.Enabled ? "Disable" : "Enable";
     public string Status { get => _status; private set => SetField(ref _status, value); }
     public string TestResult { get => _testResult; private set => SetField(ref _testResult, value); }
@@ -470,6 +668,7 @@ public sealed class CameraRowViewModel : ObservableObject
     public RelayCommand EditCommand { get; }
     public AsyncRelayCommand ApplyCommand { get; }
     public AsyncRelayCommand DeleteCommand { get; }
+    public AsyncRelayCommand AuditCommand { get; }
 
     public async Task RefreshAsync(IMediaMtxApi api)
     {
@@ -494,4 +693,39 @@ public sealed class CameraRowViewModel : ObservableObject
         if (dialog.ShowDialog() == true)
             _parent.SaveCredentials(Camera, dialog.EnteredUsername, dialog.EnteredPassword);
     }
+}
+
+public sealed class CameraProfileRowViewModel : ObservableObject
+{
+    private readonly CamerasViewModel _parent;
+    public CameraProfileRowViewModel(CameraEntry camera, CameraStreamProfile profile, CamerasViewModel parent)
+    {
+        Camera = camera;
+        Profile = profile;
+        _parent = parent;
+        AuditCommand = new AsyncRelayCommand(() => _parent.AuditCameraAsync(camera));
+        PreviewCommand = new RelayCommand(() => _parent.PreviewProfile(camera, profile));
+        SelectCommand = new AsyncRelayCommand(() => _parent.SelectProfileAsync(camera, profile, applyMediaMtx: true));
+        CreateStreamCommand = new AsyncRelayCommand(() => _parent.CreateLogicalStreamAsync(camera, profile));
+        ConfigureCommand = new AsyncRelayCommand(() => _parent.ApplyValidatedProfileAsync(camera, profile));
+    }
+
+    public CameraEntry Camera { get; }
+    public CameraStreamProfile Profile { get; }
+    public string Title => $"{Profile.ChannelId} {Profile.StreamType.ToUpperInvariant()}";
+    public string ConfiguredSummary =>
+        $"{Profile.Current.Encoding ?? "?"} {Profile.Current.Width}×{Profile.Current.Height} @{Profile.Current.Fps?.ToString("0.#") ?? "?"}fps";
+    public string ObservedSummary => Profile.Observed.Ok
+        ? $"{Profile.Observed.CodecName} {Profile.Observed.Width}×{Profile.Observed.Height} @{Profile.Observed.Fps?.ToString("0.#") ?? "?"}"
+        : (string.IsNullOrWhiteSpace(Profile.Observed.Message) ? "not probed" : Profile.Observed.Message);
+    public string AuditBadge => Profile.AuditStatus.ToUpperInvariant();
+    public string Detail => Profile.AuditMessage;
+    public bool IsSelected => string.Equals(Camera.SelectedProfileId, Profile.ProfileId, StringComparison.OrdinalIgnoreCase);
+    public string SelectedLabel => IsSelected ? "SELECTED" : "";
+
+    public AsyncRelayCommand AuditCommand { get; }
+    public RelayCommand PreviewCommand { get; }
+    public AsyncRelayCommand SelectCommand { get; }
+    public AsyncRelayCommand CreateStreamCommand { get; }
+    public AsyncRelayCommand ConfigureCommand { get; }
 }

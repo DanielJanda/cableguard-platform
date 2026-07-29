@@ -330,7 +330,17 @@ public sealed class CalibrationViewModel : ObservableObject
 
     private void Save()
     {
-        var profile = new RoiProfile
+        var stream = _streams().Streams.FirstOrDefault(s => s.StreamId == SelectedStreamId);
+        var cam = stream is null
+            ? null
+            : _cameras().Cameras.FirstOrDefault(c => c.CameraId == stream.CameraId);
+        var profile = cam?.StreamProfiles.FirstOrDefault(p => p.ProfileId == (stream?.ProfileId ?? cam.SelectedProfileId))
+                      ?? cam?.StreamProfiles.FirstOrDefault();
+        var fingerprint = profile?.ConfigurationFingerprint
+                          ?? stream?.ProfileFingerprint
+                          ?? "";
+
+        var roi = new RoiProfile
         {
             Id = ProfileId.Trim(),
             DisplayName = $"{DetectorType}/{RoiRole} @ {SelectedStreamId}",
@@ -341,12 +351,29 @@ public sealed class CalibrationViewModel : ObservableObject
             SourceWidth = FrameWidth,
             SourceHeight = FrameHeight,
             ActivationState = "saved",
+            StreamProfileFingerprint = fingerprint,
+            ChannelId = stream?.ChannelId ?? profile?.ChannelId,
+            StreamType = stream?.StreamType ?? profile?.StreamType ?? "",
         };
+
+        var mismatch = RoiProfileService.MismatchStatus(
+            roi, fingerprint, profile?.Observed.Width ?? profile?.Current.Width,
+            profile?.Observed.Height ?? profile?.Current.Height);
+        // Fresh save stamps current fingerprint — mismatch only if stream dims differ from frame.
+        if (FrameWidth > 0 && FrameHeight > 0 &&
+            profile?.Current.Width is int cw && profile.Current.Height is int ch &&
+            (FrameWidth != cw || FrameHeight != ch))
+        {
+            Status = "RESOLUTION/STREAM MISMATCH — snímek neodpovídá konfiguraci profilu. ROI stejně uloženo.";
+        }
+
         try
         {
-            RoiProfileService.Save(profile, RuntimeConfigPaths.RoiFile(_config, profile.Id));
-            _logger.Info($"[ROI] SAVED {profile.Id} type={profile.DetectorType} role={profile.RoiRole} stream={profile.StreamId} pts={profile.Points.Count} {profile.SourceWidth}x{profile.SourceHeight} (not ACTIVE)");
-            Status = $"SAVED profil: {profile.Id} ({profile.SourceWidth}×{profile.SourceHeight}) — NENÍ ACTIVE v detektoru, dokud se explicitně neaplikuje/restartuje.";
+            RoiProfileService.Save(roi, RuntimeConfigPaths.RoiFile(_config, roi.Id));
+            _logger.Info($"[ROI] SAVED {roi.Id} type={roi.DetectorType} role={roi.RoiRole} stream={roi.StreamId} pts={roi.Points.Count} {roi.SourceWidth}x{roi.SourceHeight} fp={fingerprint} (not ACTIVE)");
+            Status = mismatch is not null && !string.IsNullOrEmpty(Status)
+                ? Status
+                : $"SAVED profil: {roi.Id} ({roi.SourceWidth}×{roi.SourceHeight}) fp={fingerprint[..Math.Min(8, fingerprint.Length)]} — NENÍ ACTIVE.";
             ReloadList();
             if (DetectorType == "barrier")
             {
@@ -361,8 +388,9 @@ public sealed class CalibrationViewModel : ObservableObject
             else
             {
                 MessageBox.Show(
-                    $"Profil „{profile.Id}“ uložen jako SAVED.\n" +
-                    $"Rozlišení snímku: {profile.SourceWidth}×{profile.SourceHeight}\n\n" +
+                    $"Profil „{roi.Id}“ uložen jako SAVED.\n" +
+                    $"Rozlišení snímku: {roi.SourceWidth}×{roi.SourceHeight}\n" +
+                    $"Stream fingerprint: {fingerprint}\n\n" +
                     "ACTIVE ROI v detektoru se nemění, dokud konfiguraci neaplikuješ a detektor nerestartuješ.",
                     "ROI — SAVED", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -411,7 +439,20 @@ public sealed class CalibrationViewModel : ObservableObject
             Points.Clear();
             foreach (var p in profile.Points) Points.Add(p);
             Rebuild();
-            Status = $"Načteno: {profile.Id}";
+
+            var stream = _streams().Streams.FirstOrDefault(s => s.StreamId == profile.StreamId);
+            var cam = stream is null
+                ? null
+                : _cameras().Cameras.FirstOrDefault(c => c.CameraId == stream.CameraId);
+            var sp = cam?.StreamProfiles.FirstOrDefault(p => p.ProfileId == stream?.ProfileId);
+            var mismatch = RoiProfileService.MismatchStatus(
+                profile,
+                sp?.ConfigurationFingerprint ?? stream?.ProfileFingerprint,
+                sp?.Observed.Width ?? sp?.Current.Width,
+                sp?.Observed.Height ?? sp?.Current.Height);
+            Status = mismatch is not null
+                ? $"{mismatch} — ROI „{profile.Id}“ neodpovídá aktuálnímu stream profilu."
+                : $"Načteno: {profile.Id}";
         }
         finally
         {

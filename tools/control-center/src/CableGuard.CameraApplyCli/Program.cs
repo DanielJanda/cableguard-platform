@@ -10,6 +10,7 @@ namespace CableGuard.CameraApplyCli;
 ///   CableGuard.CameraApplyCli [camera_id]
 ///   CableGuard.CameraApplyCli --probe-channels [camera_id]
 ///   CableGuard.CameraApplyCli --prefer-h264 [camera_id]
+///   CableGuard.CameraApplyCli --audit-profiles [camera_id]
 /// </summary>
 internal static class Program
 {
@@ -23,10 +24,12 @@ internal static class Program
         var creds = new WindowsCredentialStore();
         var prober = new HttpProber(http);
         var apply = new CameraRuntimeApplyService(config, api, persister, creds, prober, logger);
+        var audit = new CameraProfileAuditService(creds, logger);
 
         var registry = CameraRegistryService.Load(config.CamerasJsonPath);
         var probeOnly = args.Contains("--probe-channels");
         var preferH264 = args.Contains("--prefer-h264");
+        var auditProfiles = args.Contains("--audit-profiles");
         var cameraId = args.FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal));
         CameraEntry? cam = null;
         if (!string.IsNullOrWhiteSpace(cameraId))
@@ -36,6 +39,57 @@ internal static class Program
         {
             Console.Error.WriteLine("Camera 10.6.1.63 / camera_id not found in registry.");
             return 2;
+        }
+
+        if (auditProfiles)
+        {
+            Console.WriteLine($"Auditing profiles for {cam.CameraId} host={cam.Host} (credentials redacted)");
+            await audit.AuditCameraAsync(cam);
+            cam.ValidatedProfile ??= CameraProfileAuditService.CreateProvisionalBaseline(
+                CameraProfileAuditService.ParseChannel(cam.Profile) ?? 102);
+            foreach (var p in cam.StreamProfiles.OrderBy(x => x.ChannelId))
+            {
+                Console.WriteLine($"--- {p.ChannelId} {p.StreamType.ToUpperInvariant()} enabled={p.Enabled} status={p.AuditStatus}");
+                Console.WriteLine($"  configured: {p.Current.Encoding} {p.Current.Width}x{p.Current.Height} @{p.Current.Fps}fps " +
+                                  $"{p.Current.BitrateType} {p.Current.BitrateKbps}kbps gov={p.Current.GovLength} " +
+                                  $"smart={p.Current.SmartCodec} svc={p.Current.Svc} audio={p.Current.Audio}");
+                Console.WriteLine($"  capabilities encodings=[{string.Join(",", p.Capabilities.Encodings)}] " +
+                                  $"resolutions=[{string.Join(",", p.Capabilities.Resolutions.Take(8))}…]");
+                Console.WriteLine($"  observed: ok={p.Observed.Ok} {p.Observed.CodecName} {p.Observed.Width}x{p.Observed.Height} " +
+                                  $"avg={p.Observed.AvgFrameRate} r={p.Observed.RFrameRate} profile={p.Observed.Profile} " +
+                                  $"bframes={p.Observed.HasBFrames} pix={p.Observed.PixFmt}");
+                Console.WriteLine($"  msg: {p.AuditMessage}");
+                if (cam.ValidatedProfile is not null && p.ChannelId == cam.ValidatedProfile.ChannelId)
+                {
+                    var drift = CameraProfileAuditService.CompareToValidated(p, cam.ValidatedProfile);
+                    Console.WriteLine($"  drift vs provisional: {drift.Status} — {drift.Message}");
+                }
+            }
+            Console.WriteLine($"model={cam.Model} firmware={cam.Firmware}");
+            var idxA = registry.Cameras.FindIndex(c => c.CameraId == cam.CameraId);
+            if (idxA >= 0) registry.Cameras[idxA] = cam;
+            CameraRegistryService.Save(registry, config.CamerasJsonPath);
+
+            // Ensure office-test-camera logical stream maps to 102 SUB without touching production.
+            var streams = StreamsService.Load(config.StreamsJsonPath);
+            StreamsService.EnrichMissingProfileFields(registry, streams);
+            var office = streams.Streams.FirstOrDefault(s => s.StreamId == "office-test-camera" || s.MediaMtxPath == "office-test-camera");
+            if (office is not null)
+            {
+                var sub = cam.StreamProfiles.FirstOrDefault(p => p.ChannelId == 102);
+                if (sub is not null)
+                {
+                    office.CameraId = cam.CameraId;
+                    office.ProfileId = sub.ProfileId;
+                    office.ChannelId = 102;
+                    office.StreamType = "sub";
+                    office.ProfileFingerprint = sub.ConfigurationFingerprint;
+                }
+            }
+            var known = registry.Cameras.Select(c => c.CameraId);
+            StreamsService.Save(streams, config.StreamsJsonPath, known);
+            Console.WriteLine("Saved cameras.json + enriched streams.json (no production apply).");
+            return 0;
         }
 
         if (!creds.TryRead(cam.CredentialRef, out var user, out var pass) || pass.Length == 0)

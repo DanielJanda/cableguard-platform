@@ -168,7 +168,16 @@ public sealed class StreamRowViewModel : ObservableObject
     }
     public LogicalStream Stream { get; }
     public string Title => Stream.IsProduction ? $"{Stream.DisplayName} ★ PRODUKCE" : Stream.DisplayName;
-    public string Subtitle => $"cesta: {Stream.MediaMtxPath}  →  kamera: {Stream.CameraId}";
+    public string Subtitle
+    {
+        get
+        {
+            var ch = Stream.ChannelId?.ToString() ?? "?";
+            var type = string.IsNullOrWhiteSpace(Stream.StreamType) ? "?" : Stream.StreamType.ToUpperInvariant();
+            var profile = string.IsNullOrWhiteSpace(Stream.ProfileId) ? "(no profile)" : Stream.ProfileId;
+            return $"cesta: {Stream.MediaMtxPath}  →  kamera: {Stream.CameraId}  ·  {ch} {type}  ·  {profile}";
+        }
+    }
     public string Live
     {
         get => _live;
