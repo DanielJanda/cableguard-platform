@@ -13,11 +13,16 @@ public sealed class ControlCenterConfig
     [JsonPropertyName("monitor_root")] public string MonitorRoot { get; set; } = "";
     [JsonPropertyName("detector_root")] public string DetectorRoot { get; set; } = "";
     [JsonPropertyName("lan_host")] public string LanHost { get; set; } = "10.6.1.40";
+    /// <summary>Canonical public browser origin (monitor + MediaMTX allow origin + kiosk).</summary>
+    [JsonPropertyName("public_origin")] public string PublicOrigin { get; set; } = "http://10.6.1.40:8080";
     [JsonPropertyName("production_stream")] public string ProductionStream { get; set; } = "zahradky-horni-stanice";
     [JsonPropertyName("mediamtx_api_base")] public string MediaMtxApiBase { get; set; } = "http://127.0.0.1:9997";
     [JsonPropertyName("whep_base_local")] public string WhepBaseLocal { get; set; } = "http://127.0.0.1:8889";
     [JsonPropertyName("event_core_base_local")] public string EventCoreBaseLocal { get; set; } = "http://127.0.0.1:8000";
     [JsonPropertyName("monitor_base_local")] public string MonitorBaseLocal { get; set; } = "http://127.0.0.1:8080";
+    /// <summary>When true, OPERATIONS starts production monitor (Nitro+Event Core), never Vite dev.</summary>
+    [JsonPropertyName("use_production_monitor")] public bool UseProductionMonitor { get; set; } = true;
+    [JsonPropertyName("kiosk_path")] public string KioskPath { get; set; } = "/kiosk/zahradky/horni-stanice";
     /// <summary>Optional detector start command; empty = detector NOT CONFIGURED (Phase 3).</summary>
     [JsonPropertyName("detector_start_command")] public string DetectorStartCommand { get; set; } = "";
     [JsonPropertyName("detector_process_hint")] public string DetectorProcessHint { get; set; } = "zahradky_horni_pad";
@@ -36,10 +41,17 @@ public sealed class ControlCenterConfig
     [JsonIgnore] public string ConfigJsonPath => Path.Combine(PlatformRoot, "runtime", "config", "controlcenter.json");
     [JsonIgnore] public string MediaMtxLocalYml => Path.Combine(PlatformRoot, "deploy", "mediamtx", "mediamtx.local.yml");
     [JsonIgnore] public string ScriptsDir => Path.Combine(PlatformRoot, "scripts");
+    [JsonIgnore] public string ResolvedPublicOrigin =>
+        string.IsNullOrWhiteSpace(PublicOrigin) ? $"http://{LanHost}:8080" : PublicOrigin.TrimEnd('/');
 
-    public string DashboardUrl => $"http://{LanHost}:8080/dashboard";
-    public string KioskUrl => $"http://{LanHost}:8080/kiosk/zahradky/horni-stanice";
+    public string DashboardUrl => $"{ResolvedPublicOrigin}/dashboard";
+    public string KioskUrl => $"{ResolvedPublicOrigin}{(KioskPath.StartsWith('/') ? KioskPath : "/" + KioskPath)}";
     public string PreviewUrl(string mediaMtxPath) => $"{WhepBaseLocal}/{mediaMtxPath}/";
+    public string MonitorRuntimeStatusUrl => $"{ResolvedPublicOrigin}/api/v1/health";
+    public string ChromeKioskManageScript => Path.Combine(ScriptsDir, "manage_operator_kiosk.ps1");
+    public string ProductionMonitorStartScript => Path.Combine(ScriptsDir, "start_production_monitor.ps1");
+    public string ProductionMonitorStopScript => Path.Combine(ScriptsDir, "stop_production_monitor.ps1");
+    public string DevMonitorStartScript => Path.Combine(MonitorRoot, "scripts", "start_internal_monitor.ps1");
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 

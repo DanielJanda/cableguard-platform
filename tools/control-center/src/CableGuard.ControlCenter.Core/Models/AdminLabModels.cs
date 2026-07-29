@@ -25,6 +25,13 @@ public sealed class DetectorInstance
     [JsonPropertyName("device")] public string Device { get; set; } = "cuda:0";
     [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
     [JsonPropertyName("debug_overlay")] public bool DebugOverlay { get; set; }
+    /// <summary>
+    /// Fall capture profile: pyav_rtsp (preferred) | mediamtx_proxy | direct_camera (OpenCV fallback).
+    /// Never embeds RTSP credentials — MediaMTX localhost URL or env-resolved direct URL.
+    /// </summary>
+    [JsonPropertyName("input_profile")] public string InputProfile { get; set; } = "pyav_rtsp";
+    /// <summary>mediamtx | direct_camera — only used when InputProfile is pyav_rtsp.</summary>
+    [JsonPropertyName("source_mode")] public string SourceMode { get; set; } = "mediamtx";
     [JsonPropertyName("publish_jsonl")] public bool PublishJsonl { get; set; } = true;
     [JsonPropertyName("publish_event_core")] public bool PublishEventCore { get; set; }
     [JsonPropertyName("publish_telegram")] public bool PublishTelegram { get; set; }

@@ -45,17 +45,55 @@ public static class DetectorLaunchBuilder
         if (instance.DetectorType == "fall")
         {
             args.Add("--mode"); args.Add("production");
-            args.Add("--input-profile"); args.Add("mediamtx_proxy");
-            env["CABLEGUARD_FALL_INPUT_PROFILE"] = "mediamtx_proxy";
-            env["CABLEGUARD_MEDIAMTX_RTSP_URL"] =
-                $"rtsp://127.0.0.1:8554/{instance.InputStream}";
 
-            // Optional office input YAML (gitignored) — never embeds camera IP.
+            var profile = string.IsNullOrWhiteSpace(instance.InputProfile)
+                ? "pyav_rtsp"
+                : instance.InputProfile.Trim();
+            var sourceMode = string.IsNullOrWhiteSpace(instance.SourceMode)
+                ? "mediamtx"
+                : instance.SourceMode.Trim();
+            if (profile is not ("pyav_rtsp" or "mediamtx_proxy" or "direct_camera" or "pyav_direct_office63"))
+                profile = "pyav_rtsp";
+            if (sourceMode is not ("mediamtx" or "direct_camera"))
+                sourceMode = "mediamtx";
+
+            args.Add("--input-profile"); args.Add(profile);
+            env["CABLEGUARD_FALL_INPUT_PROFILE"] = profile;
+            env["CABLEGUARD_FALL_SOURCE_MODE"] = sourceMode;
+
+            // Localhost MediaMTX RTSP — never camera credentials in args/env here.
+            if (profile is "mediamtx_proxy" || (profile == "pyav_rtsp" && sourceMode == "mediamtx"))
+            {
+                env["CABLEGUARD_MEDIAMTX_RTSP_URL"] =
+                    $"rtsp://127.0.0.1:8554/{instance.InputStream}";
+            }
+
+            // Optional per-instance YAML (gitignored) — never embeds camera IP.
             var officeInput = Path.Combine(config.DetectorRoot, "runtime", "config", $"{instance.Id}.yaml");
             if (File.Exists(officeInput))
             {
                 args.Add("--input-config");
                 args.Add(officeInput);
+            }
+            else if (profile == "pyav_rtsp" && sourceMode == "mediamtx")
+            {
+                var pyavYaml = Path.Combine(
+                    config.DetectorRoot, "sites", "zahradky", "horni_stanice", "fall_pyav_mediamtx.yaml");
+                if (File.Exists(pyavYaml))
+                {
+                    args.Add("--input-config");
+                    args.Add(pyavYaml);
+                }
+            }
+            else if (profile == "pyav_rtsp" && sourceMode == "direct_camera")
+            {
+                var pyavDirect = Path.Combine(
+                    config.DetectorRoot, "sites", "zahradky", "horni_stanice", "fall_pyav_direct.yaml");
+                if (File.Exists(pyavDirect))
+                {
+                    args.Add("--input-config");
+                    args.Add(pyavDirect);
+                }
             }
 
             var prepared = DetectorRuntimeConfigAdapter.TryPrepareFallSiteConfig(instance, config, out _);
@@ -73,6 +111,12 @@ public static class DetectorLaunchBuilder
                 env["CABLEGUARD_TEST_MODE"] = "true";
                 env["CABLEGUARD_EVENT_CORE_HEARTBEAT_ONLY"] =
                     instance.PublishEventCore ? "false" : "true";
+            }
+
+            // Enable heartbeats for production fall so Control Center can show video_input health.
+            if (string.Equals(instance.Id, "fall-zahradky-upper", StringComparison.OrdinalIgnoreCase))
+            {
+                env["CABLEGUARD_RUNTIME_STATUS_ENABLED"] = "true";
             }
 
             var debug = forceDebug || instance.DebugOverlay;

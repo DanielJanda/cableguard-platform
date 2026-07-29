@@ -76,7 +76,9 @@ runtime:
             PublishEventCore = false,
         };
         var spec = DetectorLaunchBuilder.Build(instance, config, new NotificationsDocument { TelegramEnabled = false });
-        Assert.Contains(spec.Arguments, a => a == "mediamtx_proxy");
+        Assert.Contains(spec.Arguments, a => a == "pyav_rtsp");
+        Assert.Equal("pyav_rtsp", spec.Environment["CABLEGUARD_FALL_INPUT_PROFILE"]);
+        Assert.Equal("mediamtx", spec.Environment["CABLEGUARD_FALL_SOURCE_MODE"]);
         Assert.Equal("rtsp://127.0.0.1:8554/office-test-camera", spec.Environment["CABLEGUARD_MEDIAMTX_RTSP_URL"]);
         Assert.Equal("false", spec.Environment["TELEGRAM_ENABLED"]);
         Assert.Equal("false", spec.Environment["CABLEGUARD_EVENT_CORE_EVENTS"]);

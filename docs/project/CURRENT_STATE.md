@@ -1,14 +1,14 @@
 # CURRENT_STATE — skutečný stav CableGuard
 
-Last verified: 2026-07-27
+Last verified: 2026-07-29
 
 Verified against:
 
-- cableguard-platform `main` commit `5400cb3`
-- cableguard-monitor `main` commit `f085ef0`
-- cableguard-detector `main` commit `c628a2f`
+- cableguard-platform feature `feat/pyav-detector-runtime` (base `feat/production-monitor-chrome-kiosk` @ `34b89d6`)
+- cableguard-monitor feature `feat/production-kiosk-audio-runtime`
+- cableguard-detector spike/PR `spike/pyav-low-latency-office63` (PyAV productionization in progress; stacked on PR #6)
 
-Zdrojem pravdy je kód na `main` a reálné akceptační testy, ne starší dokumentace. Rozpory staré dokumentace vs. kód jsou zaznamenány na konci.
+Zdrojem pravdy je kód a reálné akceptační testy, ne starší dokumentace. Rozpory staré dokumentace vs. kód jsou zaznamenány na konci.
 
 ---
 
@@ -16,17 +16,19 @@ Zdrojem pravdy je kód na `main` a reálné akceptační testy, ne starší doku
 
 ### Interní LAN runtime
 
-Celý stack běží na jednom PC **`10.6.1.40`** a je dostupný z firemní LAN. Ověřeno **vizuálně z druhého firemního PC** (2026-07-22): dashboard, kiosk, živé video, alarm, acknowledge.
+Celý stack běží na PC **`10.6.1.40`**. Kanonický origin: **`CABLEGUARD_PUBLIC_ORIGIN`** (fallback `http://10.6.1.40:8080`).
 
 | Služba | Adresa | Stav |
 |---|---|---|
-| Event Core | `0.0.0.0:8000` | CONFIRMED |
-| Monitor (Vite dev + BFF) | `0.0.0.0:8080` | CONFIRMED |
+| Event Core + BFF + UI proxy | `0.0.0.0:8080` (`scripts/start_production_monitor.ps1`) | CONFIRMED |
+| Nitro SSR UI (loopback) | `127.0.0.1:18080` | CONFIRMED |
 | MediaMTX WHEP | `:8889` (HTTP) | CONFIRMED |
 | WebRTC ICE | `:8189` (UDP) | CONFIRMED |
-| MediaMTX RTSP proxy | `:8554` (TCP, lokální použití) | CONFIRMED — využit detektorem v integračním testu, běžně bez LAN expozice |
+| MediaMTX RTSP proxy | `:8554` (TCP, lokální) | CONFIRMED |
+| Dev Event Core | `0.0.0.0:8000` | TEST LAB / legacy |
+| Dev Monitor (Vite) | `:8080` | pouze development — ne OPERATIONS |
 
-Pozn.: runtime **není persistentní služba** — po restartu PC nebo ukončení procesů nic neběží automaticky (viz RISKS). Start: `scripts/start_internal_cableguard.ps1`.
+Chrome kiosk: `scripts/manage_operator_kiosk.ps1` → Task `CableGuardOperatorKiosk`, profil `runtime/kiosk/chrome-profile/`.
 
 ### Kamera (produkční stream)
 
@@ -35,12 +37,27 @@ Pozn.: runtime **není persistentní služba** — po restartu PC nebo ukončen�
 - Ověřené rozlišení v prohlížeči: **1280×720 @ ~20 FPS**
 - RTSP credentials pouze v gitignored `deploy/mediamtx/mediamtx.local.yml` — nikdy v Gitu ani frontendu
 
+### Detector ingest acceptance (2026-07-29)
+
+| Gate | Status |
+|---|---|
+| OFFICE .63 VISUAL ACCEPTANCE | **PASS** (PyAV RAW + annotated realtime) |
+| ZAHRÁDKY VISUAL ACCEPTANCE | **DEFERRED — ON-SITE COMMISSIONING** (not FAIL/BLOCKED) |
+| Zahrádky MediaMTX PyAV 30 min soak | **PASS** (automated) |
+| MediaMTX restart recovery | **PASS** (session bump ~4 s) |
+| Preferred production input | `pyav_rtsp` + `source_mode=mediamtx` → `zahradky-horni-stanice` |
+| Direct PyAV | Diagnostic / emergency fallback only |
+| OpenCV RTSP | Diagnostic fallback only (~1 s lag on office) |
+
+
 ### Monitor (main)
 
 - **Routy:** `/dashboard`, `/events`, `/system`, `/kiosk/zahradky/horni-stanice`, `/kiosk/zahradky/dolni-stanice`, `/` (redirect)
 - **Nativní WHEP player** (`src/services/whepClient.ts`): OPTIONS → POST (očekává 201) → trickle-ICE PATCH (204) → DELETE cleanup; exponenciální backoff 1s→30s
 - **Reconnect:** automatický při selhání connectu, manuální tlačítko „Obnovit video“; StrictMode guard přes generation ref (žádné duplicitní WHEP sessions)
-- **BFF acknowledge:** Vite dev middleware `POST /bff/events/{id}/acknowledge` → injektuje `X-Kiosk-Key` server-side (`CABLEGUARD_KIOSK_API_KEY` bez `VITE_` prefixu)
+- **BFF acknowledge:** Event Core `POST /bff/events/{id}/acknowledge` (produkce, kiosk key jen server-side); Vite middleware zůstává pouze pro `npm run dev`
+- **Audio self-test:** AKTIVNÍ / BLOKOVÁN CHROMEM / CHYBA AUDIO ZAŘÍZENÍ
+- **Build:** `npm run build:production-lan` (same-origin API/WS pod PUBLIC_ORIGIN)
 - **WebSocket:** konzumuje `system.snapshot`, `event.created`, `event.acknowledged`, `service.updated`, `service.offline`; reconnect backoff max 15 s
 - **Mock/placeholder fallback:** `VITE_USE_MOCKS` (default true) — plně funkční UI bez backendu
 - **Interní profil:** `VITE_DEPLOYMENT_MODE=internal-lan` (`.env.internal-lan.local`, gitignored), start `scripts/start_internal_monitor.ps1`

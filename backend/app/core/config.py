@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     ingest_api_key: str = ""
     kiosk_api_key: str = ""
     heartbeat_timeout_sec: float = 6.0
+    # Canonical public browser origin (monitor + MediaMTX webrtcAllowOrigin + kiosk).
+    # Example: http://10.6.1.40:8080 or later http://cableguard.<firma-domena>
+    public_origin: str = "http://10.6.1.40:8080"
+    # Local Nitro node-server for production SSR UI (preferred). Empty = disabled.
+    monitor_ui_upstream: str = ""
+    # Optional prepared SPA directory (StaticFiles + index fallback). Used when upstream empty.
+    monitor_static_dir: str = ""
+    # Operator kiosk URL path under public_origin
+    kiosk_path: str = "/kiosk/zahradky/horni-stanice"
     cors_origins: str = (
         "http://10.6.1.40:8080,http://localhost:8080,http://127.0.0.1:8080,"
         "http://127.0.0.1:5173,http://localhost:5173"
@@ -34,7 +43,17 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        pub = self.public_origin.strip().rstrip("/")
+        if pub and pub not in origins:
+            origins.insert(0, pub)
+        return origins
+
+    @property
+    def kiosk_url(self) -> str:
+        base = self.public_origin.strip().rstrip("/")
+        path = self.kiosk_path if self.kiosk_path.startswith("/") else f"/{self.kiosk_path}"
+        return f"{base}{path}"
 
     def resolve_sqlite_path(self) -> Path | None:
         url = self.database_url

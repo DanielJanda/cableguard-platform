@@ -138,3 +138,7 @@ Kritické zhodnocení. Fakt z 2026-07-27: po auditu žádná služba neběžela 
 - **Likelihood:** Nízká (retry okna jsou krátká).
 - **Current mitigation:** Zdokumentováno (EVENT_PIPELINE.md); outbox publisher na detector větvi řeší doručení před ack oknem.
 - **Recommended action:** Při Phase 4 v publisheru považovat 409 po předchozím úspěchu za doručeno.
+
+## OpenCV RTSP lag (mitigated)
+
+Office `.63` proved ~1 s OpenCV lag; production detector ingest is PyAV (`pyav_rtsp`+`mediamtx`). OpenCV remains diagnostic fallback.

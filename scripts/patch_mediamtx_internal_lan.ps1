@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $Config = Join-Path $Root "deploy\mediamtx\mediamtx.local.yml"
-$LanOrigin = "http://10.6.1.40:8080"
+$LanOrigin = if ($env:CABLEGUARD_PUBLIC_ORIGIN) { $env:CABLEGUARD_PUBLIC_ORIGIN.TrimEnd('/') } else { "http://10.6.1.40:8080" }
 
 if (-not (Test-Path $Config)) {
     Write-Host "Missing $Config - run setup_mediamtx_local_config.ps1 first." -ForegroundColor Red

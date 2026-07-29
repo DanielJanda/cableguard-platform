@@ -5,12 +5,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import bff
 from app.api.v1 import acknowledgements, events, heartbeats, status, websocket
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.core.secrets import validate_runtime_secrets
 from app.db.session import init_engine
 from app.services.status_monitor import StatusMonitor
+from app.web.monitor_ui import mount_monitor_ui
 
 
 @asynccontextmanager
@@ -25,6 +27,9 @@ async def lifespan(app: FastAPI):
     await monitor.start()
     yield
     await monitor.stop()
+    proxy_client = getattr(app.state, "monitor_ui_client", None)
+    if proxy_client is not None:
+        await proxy_client.aclose()
 
 
 def create_app() -> FastAPI:
@@ -46,6 +51,9 @@ def create_app() -> FastAPI:
     app.include_router(acknowledgements.router, prefix="/api/v1", tags=["acknowledgements"])
     app.include_router(status.router, prefix="/api/v1", tags=["status"])
     app.include_router(websocket.router, tags=["websocket"])
+    app.include_router(bff.router)
+    # Monitor UI catch-all must be registered last.
+    mount_monitor_ui(app, settings)
     return app
 
 

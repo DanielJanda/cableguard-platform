@@ -1,16 +1,10 @@
-# VIDEO_PIPELINE — kamera → prohlížeč
+# VIDEO_PIPELINE — kamera → prohlížeč + detektor
 
-Last verified: 2026-07-27
-
-Verified against:
-
-- cableguard-platform `main` commit `5400cb3`
-- cableguard-monitor `main` commit `f085ef0`
-- cableguard-detector `main` commit `c628a2f`
+Last verified: 2026-07-29
 
 ---
 
-## Tok
+## Tok (operátor)
 
 ```
 kamera (RTSP, H.264)
@@ -18,6 +12,33 @@ kamera (RTSP, H.264)
     → WHEP/WebRTC (:8889 HTTP handshake, :8189 UDP media)
       → prohlížeč (<video>, nativní WHEP klient)
 ```
+
+## Tok (detektor — ADR-010)
+
+```
+kamera
+  ├─► MediaMTX logical RTSP :8554/<path>  ─┐
+  │                                         ├─► PyAvRtspLatestFrameReader (latest slot)
+  └─► direct camera RTSP (env / Credential Manager) ─┘
+                                              └─► FrameEnvelope → pose → BotSORT → fall algorithm
+```
+
+- **Preferovaný source mode (ops):** `mediamtx` (centralizovaná správa, žádné camera credentials v detektoru).
+- **Alternativa:** `direct_camera` — jen pokud MediaMTX+PyAV neprojde latency acceptance.
+- **Fallback:** OpenCV `CAP_FFMPEG` (`mediamtx_proxy` / `direct_camera`) — dočasný / diagnostika; na office `.63` prokázán ~1 s lag.
+- **PTS/DTS:** stream timeline z libav — **ne** camera wall-clock, dokud není prokázána synchronizace.
+- Fall algoritmus nezná PyAV detaily — jen `FrameReader` / BGR frame.
+
+### Production vs diagnostic (ADR-010)
+
+- **Operator video:** camera → MediaMTX → WHEP → Monitor
+- **Detector video (production default):** camera → MediaMTX RTSP logical path → PyAV latest-frame → detector (`pyav_rtsp` + `mediamtx`)
+- **Lab-proven path:** office `.63` → PyAV RAW + annotated (operator visual **PASS**)
+- **Zahrádky visual:** DEFERRED — ON-SITE COMMISSIONING (not FAIL/BLOCKED; automated soak/recovery PASS)
+- **Direct PyAV:** diagnostic / emergency profile only
+- **OpenCV VideoCapture:** diagnostický fallback only (~1 s lag proven on office `.63`)
+- **GStreamer / DeepStream:** not introduced — PyAV sufficient for software acceptance
+- Inference and display were **not** the source of the original ~1 s lag (RAW=ANNOTATED lineage)
 
 ## Proč prohlížeč nepoužívá RTSP přímo
 
