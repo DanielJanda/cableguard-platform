@@ -129,17 +129,13 @@ public static class DetectorLaunchBuilder
             var telegramOn = instance.PublishTelegram && (notifications?.TelegramEnabled ?? false);
             env["TELEGRAM_ENABLED"] = telegramOn ? "true" : "false";
 
-            // Event Core URL+key required when events are ON (detector ConfigError otherwise).
-            // Inject URL from Control Center config; ingest key from host env / platform .env (never log).
+            // Always inject Event Core URL for fall — RuntimeStatus / events need it.
+            // Ingest key from host env / platform .env (never log). Missing key → events OFF (no ConfigError).
             var wantEvents = instance.PublishEventCore;
-            var needsEventCoreEnv = wantEvents || isOfficeTest || isProdFall;
-            if (needsEventCoreEnv)
-            {
-                var url = PlatformEnvSecrets.TryGet(PlatformEnvSecrets.EventCoreUrl, config.PlatformRoot)
-                          ?? config.EventCoreBaseLocal;
-                if (!string.IsNullOrWhiteSpace(url))
-                    env[PlatformEnvSecrets.EventCoreUrl] = url.TrimEnd('/');
-            }
+            var url = PlatformEnvSecrets.TryGet(PlatformEnvSecrets.EventCoreUrl, config.PlatformRoot)
+                      ?? config.EventCoreBaseLocal;
+            if (!string.IsNullOrWhiteSpace(url))
+                env[PlatformEnvSecrets.EventCoreUrl] = url.TrimEnd('/');
 
             var ingestKey = PlatformEnvSecrets.TryGet(PlatformEnvSecrets.IngestApiKey, config.PlatformRoot);
             if (!string.IsNullOrWhiteSpace(ingestKey))
@@ -147,7 +143,6 @@ public static class DetectorLaunchBuilder
 
             if (wantEvents && string.IsNullOrWhiteSpace(ingestKey))
             {
-                // Prefer a living detector over a ConfigError exit — operator can fix key and restart.
                 wantEvents = false;
                 if (isOfficeTest)
                     env["CABLEGUARD_EVENT_CORE_HEARTBEAT_ONLY"] = "true";

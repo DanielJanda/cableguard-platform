@@ -289,6 +289,10 @@ public sealed class MainViewModel : ObservableObject
         office.Enabled = true;
         office.DebugOverlay = debug;
         office.PublishEventCore = true;
+        office.InputProfile = "pyav_rtsp";
+        office.SourceMode = "mediamtx";
+        office.InputStream = "office-test-camera";
+        office.PublishTelegram = false;
         Notifications.TelegramEnabled = false;
         _logger.Info($"[GUI] Start fall-office-test debug={debug} telegram=OFF relay_auto=OFF");
         await Detectors.StartAsync(office, debug);

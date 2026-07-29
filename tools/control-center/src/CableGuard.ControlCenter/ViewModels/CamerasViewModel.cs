@@ -112,17 +112,6 @@ public sealed class CamerasViewModel : ObservableObject
 
         var docs = DetectorLaunchBuilder.Load(_config.DetectorsJsonPath);
         var instance = CameraDetectionLauncher.ResolveOrCreateInstance(camera, docs);
-        var summary = CameraDetectionLauncher.FormatOperatorSummary(
-            CameraDetectionLauncher.BuildSafeSummary(camera, instance));
-        if (summary.Contains("rtsp://", StringComparison.OrdinalIgnoreCase))
-        {
-            MessageBox.Show("Souhrn obsahuje zakázaná data.", "Security", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        var ok = MessageBox.Show(summary + (debug ? "\n\nDEBUG overlay ON" : "\n\nBez debug okna"),
-            "START DETECTION", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-        if (ok != MessageBoxResult.OK) return;
 
         try
         {
@@ -153,10 +142,23 @@ public sealed class CamerasViewModel : ObservableObject
             _notifications.TelegramEnabled = false;
         }
         instance.DebugOverlay = debug;
+        if (string.Equals(camera.CameraId, OfficeCameraBootstrap.OfficeCameraId, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(instance.Id, "fall-office-test", StringComparison.OrdinalIgnoreCase))
+        {
+            instance.InputProfile = "pyav_rtsp";
+            instance.SourceMode = "mediamtx";
+            instance.InputStream = OfficeCameraBootstrap.OfficePath;
+        }
 
         await _detectors.ReloadAsync();
         var live = _detectors.Items.Select(i => i.Instance).FirstOrDefault(i => i.Id == instance.Id) ?? instance;
         live.DebugOverlay = debug;
+        if (string.Equals(live.Id, "fall-office-test", StringComparison.OrdinalIgnoreCase))
+        {
+            live.InputProfile = "pyav_rtsp";
+            live.SourceMode = "mediamtx";
+            live.InputStream = OfficeCameraBootstrap.OfficePath;
+        }
         _logger.Info($"[CAMERAS] START DETECTION camera={camera.CameraId} profile={live.InputProfile} source={live.SourceMode} path={live.InputStream}");
         await _detectors.StartAsync(live, debug);
         await Task.Delay(2000);
@@ -165,11 +167,9 @@ public sealed class CamerasViewModel : ObservableObject
         row?.Refresh();
         if (row is not null && !string.Equals(row.Status, "BĚŽÍ", StringComparison.OrdinalIgnoreCase))
         {
-            var errLog = Path.Combine(_config.LogsDir, "detectors", $"{live.Id}.err.log");
+            var errLog = System.IO.Path.Combine(_config.LogsDir, "detectors", $"{live.Id}.err.log");
             MessageBox.Show(
-                $"Detektor se nespustil nebo ihned skončil.\n\nZkontrolujte:\n" +
-                $"• CABLEGUARD_EVENT_CORE_URL / CABLEGUARD_INGEST_API_KEY (platform .env)\n" +
-                $"• MediaMTX path READY\n• log: {errLog}",
+                $"Detektor se nespustil.\n{errLog}",
                 "START DETECTION",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);

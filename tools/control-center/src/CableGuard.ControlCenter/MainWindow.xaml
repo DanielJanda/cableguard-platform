@@ -1,4 +1,4 @@
-<Window x:Class="CableGuard.ControlCenter.MainWindow"
+﻿<Window x:Class="CableGuard.ControlCenter.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CableGuard Admin Studio"
@@ -415,8 +415,16 @@
       <TabItem Header="Detection" DataContext="{Binding DetectionOps}">
         <ScrollViewer Margin="16">
           <StackPanel>
-            <TextBlock Text="Detection — vybraná kamera" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
-            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontFamily="Consolas" Margin="0,0,0,12"/>
+            <TextBlock Text="Detection" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+              <TextBlock Text="Kamera:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <ComboBox Width="320"
+                        ItemsSource="{Binding Cameras}"
+                        SelectedItem="{Binding SelectedCamera}"
+                        DisplayMemberPath="DisplayName"/>
+            </StackPanel>
+            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontFamily="Consolas" Margin="0,0,0,4"/>
+            <TextBlock Text="{Binding StatusLine}" FontWeight="Bold" Margin="0,0,0,12"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
               <Button Content="START" Command="{Binding StartCommand}" Background="#FF2E7D32" FontWeight="Bold"/>
               <Button Content="STOP" Command="{Binding StopCommand}"/>
@@ -425,7 +433,6 @@
               <Button Content="CLOSE DEBUG OVERLAY" Command="{Binding CloseDebugCommand}"/>
               <Button Content="OPEN MONITOR" Command="{Binding DataContext.OpenMonitorForSelectedCommand, RelativeSource={RelativeSource AncestorType=Window}}" Background="#FF3A5A8C"/>
             </StackPanel>
-            <TextBlock Text="{Binding LastLaunchSummary}" TextWrapping="Wrap" FontFamily="Consolas" Foreground="#FFB8C0CC"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

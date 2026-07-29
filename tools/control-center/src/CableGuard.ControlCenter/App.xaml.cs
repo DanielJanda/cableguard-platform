@@ -78,6 +78,13 @@ public partial class App : Application
         var recordingOps = new RecordingOpsViewModel(config, session, mediaMtxApi);
         var eventsTests = new EventsTestsViewModel(config, logger, session, http);
 
+        // Default operator focus: office test camera (Detection tab works without Cameras SELECT).
+        var officeCam = camerasVm.Registry.Cameras.FirstOrDefault(c =>
+            string.Equals(c.CameraId, OfficeCameraBootstrap.OfficeCameraId, StringComparison.OrdinalIgnoreCase));
+        if (officeCam is not null)
+            session.Select(officeCam);
+        detectionOps.EnsureDefaultOfficeCamera();
+
         var mainVm = new MainViewModel(config, logger, components, mode, camerasVm, streamsVm, detectorsVm,
             calibrationVm, notificationsVm, hardwareVm, scenariosVm, videoLabVm, logsVm, settingsVm,
             session, detectionOps, recordingOps, eventsTests, mediaMtxApi);
