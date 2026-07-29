@@ -417,7 +417,7 @@
           <StackPanel>
             <TextBlock Text="Detection" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
             <TextBlock TextWrapping="Wrap" Foreground="{StaticResource FgMuted}" Margin="0,0,0,12"
-                       Text="START S NÁHLEDEM otevře samostatné OpenCV okno (např. „PAD PYAV mediamtx · full · ASYNC“) — není uvnitř Admin Studio. Podívejte se na hlavní panel Windows."/>
+                       Text="START S NÁHLEDEM otevře samostatné OpenCV okno (např. „PAD PYAV mediamtx full ASYNC“) — není uvnitř Admin Studio. Podívejte se na hlavní panel Windows."/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
               <TextBlock Text="Kamera:" VerticalAlignment="Center" Margin="0,0,8,0"/>
               <ComboBox Width="320"
