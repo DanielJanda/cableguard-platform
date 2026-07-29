@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-07-29T22:00:00+02:00",
+  "audit_id": "release-readiness-2026-07-29",
+  "verdict": "NOT_READY_FIX_P0_P1_FIRST",
+  "feature_freeze": true,
+  "repo_heads": {
+    "cableguard-detector": {
+      "checkout": "detached@47366e2",
+      "pr7_tip": "47366e2f61a73859513976b473fcb0ac45d24d1c",
+      "origin_main": "a35559979964d759b02a69cf3e07dc6d638f6c79"
+    },
+    "cableguard-platform": {
+      "origin_main": "e07adc04004c4bd3237cb14cc5dadb666d730070",
+      "pr34_tip": "afed13ef509213f3017801ce992d0ba27fe05f1d",
+      "pr35_tip": "b4988de2cf1c389b137da653aeb93e89fe9bfbf2",
+      "audit_branch_base": "e07adc04004c4bd3237cb14cc5dadb666d730070"
+    },
+    "cableguard-monitor": {
+      "pr13_tip": "f9b4af838e2fbcba4af19fe9d37694b6f88f30b7",
+      "origin_main": "d1a5b19534be779e3f9aa590fc4911d4da276cb0"
+    }
+  },
+  "open_prs": [
+    {"repo": "detector", "number": 5, "draft": true, "title": "perf(pad): latest-frame low-latency runtime"},
+    {"repo": "detector", "number": 6, "draft": true, "title": "perf: lightweight OpenCV fall debug overlay"},
+    {"repo": "detector", "number": 7, "draft": true, "title": "feat: PyAV low-latency RTSP ingest"},
+    {"repo": "platform", "number": 26, "draft": false, "title": "feat(cameras): stream profile audit"},
+    {"repo": "platform", "number": 32, "draft": true, "title": "feat: PyAV detector runtime in Control Center"},
+    {"repo": "platform", "number": 33, "draft": true, "title": "feat: incident pipeline MVP"},
+    {"repo": "platform", "number": 34, "draft": true, "title": "feat: Control Center operations UX"},
+    {"repo": "platform", "number": 35, "draft": true, "title": "feat: multi-camera monitor layout API"},
+    {"repo": "monitor", "number": 13, "draft": true, "title": "feat: Gate 1–2 operator shell + multi-camera live view"}
+  ],
+  "stacking": {
+    "platform": "32_subset_33_subset_34_not_35",
+    "detector": "6_subset_7_5_parallel"
+  },
+  "feature_counts_by_status": {
+    "PASS_OR_PASS_WITH_NOTES": 28,
+    "PARTIAL": 24,
+    "FAIL": 3,
+    "NOT_IMPLEMENTED": 18,
+    "DEFERRED_ON_SITE": 6,
+    "OBSOLETE_OR_UNKNOWN": 5
+  },
+  "pass_count": 28,
+  "partial_count": 24,
+  "fail_count": 3,
+  "not_implemented_count": 18,
+  "deferred_count": 6,
+  "tests_run": {
+    "detector_pytest": "116 passed",
+    "platform_pytest": "42 passed",
+    "monitor_verify": "gate1,gate2,whep,contracts,office-nav PASS",
+    "golden_master_regenerated": false
+  },
+  "runtime_probes": {
+    "event_core_health": true,
+    "mediamtx_ready_paths": 6,
+    "monitor_live_http": 200
+  },
+  "release_blockers": ["B01_mediamtx_bak_gitignore", "B02_platform_stack_35_vs_34", "B03_detector_pyav_not_on_main", "B04_no_ci_checks", "B05_alarm_cut_dev_adapter"],
+  "high_risks": [
+    "credential_bak_footgun",
+    "wrong_platform_tip",
+    "false_ready_states",
+    "webrtc_session_leak",
+    "test_relay_misuse"
+  ],
+  "next_recommended_gate": "Gate_R1_release_hygiene_and_alarm_vertical_cut",
+  "merge_now": [],
+  "keep_draft": ["detector#5", "detector#6", "detector#7", "platform#32", "platform#33", "platform#34", "platform#35", "monitor#13"],
+  "close_candidates": ["platform#32_after_34", "platform#33_after_34", "detector#5_if_absorbed_by_7"]
+}
