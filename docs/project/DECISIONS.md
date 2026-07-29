@@ -85,3 +85,13 @@ Verified against:
 - **Status:** Accepted
 
 
+
+## ADR-010 — PyAV low-latency RTSP ingest
+
+- **Context:** On office camera `10.6.1.63`, OpenCV `VideoCapture` (FFmpeg) direct RTSP showed ~1 s constant lag vs MediaMTX WHEP. Frame lineage proved RAW and ANNOTATED shared the same `frame_seq` and were equally late — lag was in RTSP→decode ingest, not YOLO, BotSORT, lightweight renderer, or AsyncDebugDisplay.
+- **Decision:** Introduce production video backend **`PyAvRtspLatestFrameReader`** (`pyav_rtsp`): one producer thread, single latest-frame slot (overwrite, no FIFO), producer never waits on detector; reconnect clears slot and bumps `source_session_id`. Prefer **MediaMTX logical RTSP** as source when latency parity holds; keep **direct camera** as alternate. OpenCV RTSP remains temporary fallback/diagnostics only. Do **not** introduce GStreamer/DeepStream until PyAV fails production acceptance or ops require hardware decode pipelines.
+- **Reason:** Operator visual acceptance on `.63` — PyAV RAW **and** annotated detector both rated realtime / much better (A). Verified stack: PyAV 13.1.0, Python 3.10.11 Windows, libav 61.x, TCP + low-delay options, SLICE threading. Fall algorithm / golden master unchanged.
+- **Consequences:** Pin `av==13.1.0` in detector requirements; Control Center launches `pyav_rtsp` + `source_mode=mediamtx` by default in examples; heartbeat `details_json.video_input` carries backend health (no credentials). **Production Zahrádky camera acceptance (MediaMTX PyAV vs direct PyAV) is still required** before declaring the final production default. PTS/DTS are stream timeline, not camera wall-clock.
+- **Status:** Accepted (office proven); **production default pending Zahrádky visual acceptance**
+- **Supersedes implications in:** older “OpenCV RTSP is fine for detector latency” notes for office `.63` (see detector `docs/audits/project-audit-after-pyav-2026-07-29.md`)
+

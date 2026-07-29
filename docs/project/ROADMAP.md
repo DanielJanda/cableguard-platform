@@ -22,8 +22,9 @@ Toto není wishlist — fáze vycházejí ze skutečného stavu (viz CURRENT_STA
 | 2.5 – Local Admin Control Center MVP | **DONE** | Lokální admin GUI MVP mergnuto (PR #21) |
 | 2.6 – Admin Studio / Test Lab | **DONE** (PR #22) | OPERATIONS\|TEST LAB: cameras, streams, detectors, ROI, notifications, hardware, scenarios |
 | 2.6b – Video Qualification Lab | **CURRENT** | Video Lab: transport metrics, manual G2G, soak, qualification (≠ estimated latency) |
-| 3 – Detector media input | **NEXT** | Detektor trvale čte vybranou MediaMTX path, video-level parita |
-| 4 – Live fall event integration | PLANNED | Reálný pád → Event Core → alarm v monitoru (EventCorePublisher, heartbeat, outbox) |
+| 3 – Detector media input | **CURRENT** | PyAV latest-frame ingest (ADR-010); Zahrádky acceptance PENDING |
+| 4 – Live fall event integration | PLANNED | Reálný pád → Event Core → alarm v monitoru |
+| 4.5 – Incident video recording | PLANNED | Pre/post evidence clips + Event Core metadata (neblokuje inference) |
 | 5 – Production runtime simplification | PLANNED | React build + statický hosting, BFF server-side, konec Vite dev serveru v provozu |
 | 6 – Automatic services | PLANNED | Windows služby, auto-start, recovery, logy |
 | 7 – Physical safety I/O | PLANNED | Advantech USB, semafor, siréna, relay safety rules |

@@ -1,14 +1,14 @@
 # CURRENT_STATE — skutečný stav CableGuard
 
-Last verified: 2026-07-28
+Last verified: 2026-07-29
 
 Verified against:
 
-- cableguard-platform feature `feat/production-monitor-chrome-kiosk` (base main `e07adc0`)
+- cableguard-platform feature `feat/pyav-detector-runtime` (base `feat/production-monitor-chrome-kiosk` @ `34b89d6`)
 - cableguard-monitor feature `feat/production-kiosk-audio-runtime`
-- cableguard-detector `main` `a355599`
+- cableguard-detector spike/PR `spike/pyav-low-latency-office63` (PyAV productionization in progress; stacked on PR #6)
 
-Zdrojem pravdy je kód na `main` a reálné akceptační testy, ne starší dokumentace. Rozpory staré dokumentace vs. kód jsou zaznamenány na konci.
+Zdrojem pravdy je kód a reálné akceptační testy, ne starší dokumentace. Rozpory staré dokumentace vs. kód jsou zaznamenány na konci.
 
 ---
 
@@ -36,6 +36,18 @@ Chrome kiosk: `scripts/manage_operator_kiosk.ps1` → Task `CableGuardOperatorKi
 - Zdroj: horní stanice Zahrádky, kamera **`.92`** (potvrzeno aktuální gitignored `mediamtx.local.yml`), H.264 substream
 - Ověřené rozlišení v prohlížeči: **1280×720 @ ~20 FPS**
 - RTSP credentials pouze v gitignored `deploy/mediamtx/mediamtx.local.yml` — nikdy v Gitu ani frontendu
+
+### Detector video ingest (2026-07-29)
+
+| Item | Stav |
+|---|---|
+| OpenCV direct RTSP ~1 s lag (office `.63`) | CONFIRMED (lineage RAW=ANNOTATED) |
+| PyAV RAW + annotated vs WHEP (office `.63`) | CONFIRMED operator **A** (realtime / much better) |
+| PyAV on production Zahrádky (MediaMTX vs direct) | **PENDING** manual visual acceptance |
+| Control Center default launch profile (examples) | `pyav_rtsp` + `source_mode=mediamtx` |
+| Fall algorithm / golden master | Unchanged |
+
+See ADR-010 in `DECISIONS.md` and detector audit `docs/audits/project-audit-after-pyav-2026-07-29.md`.
 
 ### Monitor (main)
 
