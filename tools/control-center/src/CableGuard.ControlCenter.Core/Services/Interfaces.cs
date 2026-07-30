@@ -63,6 +63,8 @@ public interface IMediaMtxApi
     Task<bool> PatchPathSourceAsync(string pathName, string source, CancellationToken ct = default);
     /// <summary>GET /v3/config/paths/get/{name} — true when path conf exists.</summary>
     Task<bool?> ConfigPathExistsAsync(string pathName, CancellationToken ct = default);
+    /// <summary>GET /v3/config/paths/get/{name} → record flag (null if API unreachable).</summary>
+    Task<bool?> IsPathRecordingEnabledAsync(string pathName, CancellationToken ct = default);
     /// <summary>POST /v3/config/paths/add/{name} (MediaMTX v1.11+).</summary>
     Task<bool> AddPathAsync(string pathName, string source, string? rtspTransport = "tcp", CancellationToken ct = default);
     /// <summary>DELETE /v3/config/paths/delete/{name}.</summary>

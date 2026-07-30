@@ -68,6 +68,19 @@ public sealed class MediaMtxApiClient : IMediaMtxApi
         catch (TaskCanceledException) { return null; }
     }
 
+    public async Task<bool?> IsPathRecordingEnabledAsync(string pathName, CancellationToken ct = default)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync($"{_base}/v3/config/paths/get/{Uri.EscapeDataString(pathName)}", ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            return doc.RootElement.TryGetProperty("record", out var record) && record.ValueKind == JsonValueKind.True;
+        }
+        catch (HttpRequestException) { return null; }
+        catch (TaskCanceledException) { return null; }
+    }
+
     public async Task<bool> PatchPathSourceAsync(string pathName, string source, CancellationToken ct = default)
     {
         try

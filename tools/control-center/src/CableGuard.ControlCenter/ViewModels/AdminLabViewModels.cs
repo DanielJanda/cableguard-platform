@@ -301,9 +301,10 @@ public sealed class DetectorsViewModel : ObservableObject
         }
         MessageBox.Show(
             "Detektor běží s náhledem.\n\n" +
-            "Mělo se otevřít okno OpenCV:\n„Zahradky horni pad [debug overlay]“\n\n" +
-            "Pokud ho nevidíte, podívejte se na hlavní panel Windows — často je za Admin Studio.\n\n" +
-            "Poznámka: Monitor/kiosk ukazují čisté video bez AI překryvu.",
+            "Mělo se otevřít OpenCV okno, např.:\n" +
+            "„PAD PYAV mediamtx full ASYNC“\n\n" +
+            "Není uvnitř Admin Studio — podívejte se na hlavní panel Windows / Alt+Tab.\n\n" +
+            "VIDEO V PROHLÍŽEČI = čisté video bez AI překryvu.",
             "Náhled detekce", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 

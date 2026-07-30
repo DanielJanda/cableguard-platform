@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 
 namespace CableGuard.ControlCenter.ViewModels;
@@ -57,6 +58,14 @@ public sealed class AsyncRelayCommand : ICommand
         _isRunning = true;
         RaiseCanExecuteChanged();
         try { await _execute(); }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                ex.Message,
+                "Operace selhala",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
         finally
         {
             _isRunning = false;

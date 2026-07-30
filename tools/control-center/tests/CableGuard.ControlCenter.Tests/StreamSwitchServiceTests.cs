@@ -32,6 +32,9 @@ internal sealed class FakeMediaMtxApi : IMediaMtxApi
     public Task<bool?> ConfigPathExistsAsync(string pathName, CancellationToken ct = default) =>
         Task.FromResult<bool?>(Sources.ContainsKey(pathName));
 
+    public Task<bool?> IsPathRecordingEnabledAsync(string pathName, CancellationToken ct = default) =>
+        Task.FromResult<bool?>(Sources.ContainsKey(pathName) && pathName.Contains("office", StringComparison.OrdinalIgnoreCase));
+
     public Task<bool> PatchPathSourceAsync(string pathName, string source, CancellationToken ct = default)
     {
         PatchCalls.Add((pathName, source));

@@ -104,8 +104,11 @@ public static class DetectorLaunchBuilder
                 env["CABLEGUARD_ROI_SHA256"] = prepared.RoiSha256;
             }
 
+            var isOfficeTest = string.Equals(instance.Id, "fall-office-test", StringComparison.OrdinalIgnoreCase);
+            var isProdFall = string.Equals(instance.Id, "fall-zahradky-upper", StringComparison.OrdinalIgnoreCase);
+
             // Office Test Lab: heartbeat always; alarms only when PublishEventCore; never Telegram/relay.
-            if (string.Equals(instance.Id, "fall-office-test", StringComparison.OrdinalIgnoreCase))
+            if (isOfficeTest)
             {
                 env["CABLEGUARD_RUNTIME_STATUS_ENABLED"] = "true";
                 env["CABLEGUARD_TEST_MODE"] = "true";
@@ -114,24 +117,38 @@ public static class DetectorLaunchBuilder
             }
 
             // Enable heartbeats for production fall so Control Center can show video_input health.
-            if (string.Equals(instance.Id, "fall-zahradky-upper", StringComparison.OrdinalIgnoreCase))
-            {
+            if (isProdFall)
                 env["CABLEGUARD_RUNTIME_STATUS_ENABLED"] = "true";
-            }
 
             var debug = forceDebug || instance.DebugOverlay;
             if (debug)
-            {
                 args.Add("--debug-overlay");
-            }
             else
-            {
                 args.Add("--no-window");
-            }
 
             var telegramOn = instance.PublishTelegram && (notifications?.TelegramEnabled ?? false);
             env["TELEGRAM_ENABLED"] = telegramOn ? "true" : "false";
-            env["CABLEGUARD_EVENT_CORE_EVENTS"] = instance.PublishEventCore ? "true" : "false";
+
+            // Always inject Event Core URL for fall — RuntimeStatus / events need it.
+            // Ingest key from host env / platform .env (never log). Missing key → events OFF (no ConfigError).
+            var wantEvents = instance.PublishEventCore;
+            var url = PlatformEnvSecrets.TryGet(PlatformEnvSecrets.EventCoreUrl, config.PlatformRoot)
+                      ?? config.EventCoreBaseLocal;
+            if (!string.IsNullOrWhiteSpace(url))
+                env[PlatformEnvSecrets.EventCoreUrl] = url.TrimEnd('/');
+
+            var ingestKey = PlatformEnvSecrets.TryGet(PlatformEnvSecrets.IngestApiKey, config.PlatformRoot);
+            if (!string.IsNullOrWhiteSpace(ingestKey))
+                env[PlatformEnvSecrets.IngestApiKey] = ingestKey;
+
+            if (wantEvents && string.IsNullOrWhiteSpace(ingestKey))
+            {
+                wantEvents = false;
+                if (isOfficeTest)
+                    env["CABLEGUARD_EVENT_CORE_HEARTBEAT_ONLY"] = "true";
+            }
+
+            env["CABLEGUARD_EVENT_CORE_EVENTS"] = wantEvents ? "true" : "false";
             // Token/chat stay in Credential Manager / process env set by host — never in LaunchSpec args.
         }
         else if (instance.DetectorType == "barrier")

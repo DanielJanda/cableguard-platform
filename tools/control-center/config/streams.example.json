@@ -18,11 +18,11 @@
       "is_production": false
     },
     {
-      "stream_id": "office-test",
-      "display_name": "Office test",
-      "mediamtx_path": "office-test",
-      "camera_id": "office-test-1",
-      "enabled": false,
+      "stream_id": "office-test-camera",
+      "display_name": "Kancelářská kamera (test)",
+      "mediamtx_path": "office-test-camera",
+      "camera_id": "office-63",
+      "enabled": true,
       "is_production": false
     }
   ]

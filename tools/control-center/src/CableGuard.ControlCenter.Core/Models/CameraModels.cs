@@ -24,6 +24,17 @@ public sealed class CameraEntry
     [JsonPropertyName("runtime_state")] public string RuntimeState { get; set; } = "configured_not_ready";
     /// <summary>Safe operator-facing last apply message (no credentials).</summary>
     [JsonPropertyName("last_apply_message")] public string LastApplyMessage { get; set; } = "";
+
+    /// <summary>test | production — drives UI badges and test-event labeling.</summary>
+    [JsonPropertyName("environment")] public string Environment { get; set; } = "production";
+    /// <summary>Preferred detector CLI profile (e.g. pyav_rtsp).</summary>
+    [JsonPropertyName("detector_input_profile")] public string DetectorInputProfile { get; set; } = "pyav_rtsp";
+    /// <summary>Preferred backend label for status bar (usually same as detector_input_profile).</summary>
+    [JsonPropertyName("preferred_backend")] public string PreferredBackend { get; set; } = "pyav_rtsp";
+    /// <summary>mediamtx | direct_camera</summary>
+    [JsonPropertyName("source_mode")] public string SourceMode { get; set; } = "mediamtx";
+    [JsonPropertyName("recording_allowed")] public bool RecordingAllowed { get; set; }
+    [JsonPropertyName("event_generation_allowed")] public bool EventGenerationAllowed { get; set; } = true;
 }
 
 /// <summary>Legacy inline mapping kept for cameras.json v1 compatibility.</summary>
