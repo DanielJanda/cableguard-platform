@@ -11,6 +11,7 @@ from app.core.media_urls import validate_media_url
 
 EventStatus = Literal["open", "acknowledged", "closed"]
 Severity = Literal["info", "warning", "alarm", "critical"]
+MediaStatus = Literal["NOT_REQUESTED", "PENDING", "READY", "FAILED", "EXPIRED"]
 
 
 class EventCreate(BaseModel):
@@ -55,10 +56,13 @@ class EventRead(BaseModel):
     status: str
     snapshot_url: str | None
     clip_url: str | None
+    snapshot_status: str = "NOT_REQUESTED"
+    clip_status: str = "NOT_REQUESTED"
     algorithm_version: str | None
     model_sha256: str | None
     config_sha256: str | None
     payload_json: dict[str, Any] | None
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -68,9 +72,9 @@ class EventRead(BaseModel):
         """True when payload_json.test_mode is explicitly true (office / lab events)."""
         return is_test_payload(self.payload_json)
 
-    @field_serializer("created_at", "received_at")
-    def serialize_datetimes(self, value: datetime) -> str:
-        return serialize_utc_datetime(value) or ""
+    @field_serializer("created_at", "received_at", "updated_at")
+    def serialize_datetimes(self, value: datetime | None) -> str | None:
+        return serialize_utc_datetime(value)
 
 
 def is_test_payload(payload: dict[str, Any] | None) -> bool:

@@ -13,6 +13,7 @@ from app.core.exceptions import AcknowledgementConflictError, EventPayloadConfli
 from app.db.models import Acknowledgement, Event
 from app.schemas.acknowledgements import AcknowledgementCreate
 from app.schemas.events import EventCreate, EventRead
+from app.services.camera_registry import canonicalize_camera_id
 from app.services.event_payload import events_payload_match
 from app.services.websocket_manager import ws_manager
 
@@ -42,24 +43,29 @@ def create_event(db: Session, body: EventCreate) -> tuple[Event, CreateEventOutc
             return existing, "duplicate"
         return existing, "conflict"
 
+    camera_id = canonicalize_camera_id(body.camera_id) or body.camera_id
+    now = _utcnow()
     row = Event(
         event_id=body.event_id,
         event_type=body.event_type,
         severity=body.severity,
         site_id=body.site_id,
         station_id=body.station_id,
-        camera_id=body.camera_id,
+        camera_id=camera_id,
         service_id=body.service_id,
         created_at=ensure_utc(body.created_at),
-        received_at=_utcnow(),
+        received_at=now,
         risk_score=body.risk_score,
         status="open",
         snapshot_url=body.snapshot_url,
         clip_url=body.clip_url,
+        snapshot_status="NOT_REQUESTED",
+        clip_status="NOT_REQUESTED",
         algorithm_version=body.algorithm_version,
         model_sha256=body.model_sha256,
         config_sha256=body.config_sha256,
         payload_json=body.payload_json,
+        updated_at=now,
     )
     try:
         db.add(row)
@@ -89,9 +95,14 @@ def list_events(
     *,
     site_id: str | None = None,
     station_id: str | None = None,
+    camera_id: str | None = None,
     event_type: str | None = None,
     status: str | None = None,
     service_id: str | None = None,
+    snapshot_status: str | None = None,
+    clip_status: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
     include_test_events: bool = False,
     limit: int = 50,
     offset: int = 0,
@@ -103,12 +114,23 @@ def list_events(
         q = q.where(Event.site_id == site_id)
     if station_id:
         q = q.where(Event.station_id == station_id)
+    if camera_id:
+        canonical = canonicalize_camera_id(camera_id) or camera_id
+        q = q.where(Event.camera_id == canonical)
     if event_type:
         q = q.where(Event.event_type == event_type)
     if status:
         q = q.where(Event.status == status)
     if service_id:
         q = q.where(Event.service_id == service_id)
+    if snapshot_status:
+        q = q.where(Event.snapshot_status == snapshot_status)
+    if clip_status:
+        q = q.where(Event.clip_status == clip_status)
+    if created_from is not None:
+        q = q.where(Event.created_at >= ensure_utc(created_from))
+    if created_to is not None:
+        q = q.where(Event.created_at <= ensure_utc(created_to))
 
     # Filter test events in-process so SQLite/Postgres JSON shapes stay portable.
     ordered = list(db.scalars(q.order_by(Event.created_at.desc())).all())

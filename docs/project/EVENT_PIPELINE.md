@@ -1,6 +1,22 @@
 # EVENT_PIPELINE — Event Core
 
-Last verified: 2026-07-27
+Last verified: 2026-07-30 (office incident clip E2E)
+
+## Incident media (feature: `feat/incident-pipeline-release`)
+
+Flow (office-tested with MediaMTX v1.11.3 playback):
+
+1. `POST /api/v1/events` fall → WS `event.created` immediately (alarm does not wait for media)
+2. `incident_clip_jobs` row PENDING; `snapshot_status`/`clip_status` = PENDING
+3. Worker waits until `occurred_at + post_event_seconds` (default **30 s**), then localhost MediaMTX `/get`
+4. Remux `+faststart`, ffprobe, SHA-256, JPEG snapshot at pre-roll offset (default **15 s**)
+5. Atomic store under `runtime/incidents/<camera>/<YYYY-MM-DD>/<event-id>/`
+6. WS `event.updated` / `snapshot_ready` / `clip_ready`
+7. Serve via `GET /api/v1/events/{id}/snapshot` and `.../clip` (Range supported; no filesystem paths)
+
+Camera aliases: `camera-122727` / `office-test-camera` → canonical **`office-63`** → MTX path **`office-test-camera`**.
+
+Migration: `0003_incident_media`.
 
 Verified against:
 
