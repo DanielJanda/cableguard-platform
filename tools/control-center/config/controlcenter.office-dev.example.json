@@ -1,0 +1,12 @@
+{
+  "lan_host": "10.6.1.40",
+  "public_origin": "http://10.6.1.40:8080",
+  "event_core_base_local": "http://127.0.0.1:8000",
+  "monitor_base_local": "http://127.0.0.1:8080",
+  "mediamtx_api_base": "http://127.0.0.1:9997",
+  "whep_base_local": "http://127.0.0.1:8889",
+  "production_stream": "office-test-camera",
+  "use_production_monitor": false,
+  "readiness_timeout_seconds": 60,
+  "_comment": "Copy to runtime/config/controlcenter.json (gitignored). use_production_monitor=true only after monitor npm run build:production-lan."
+}

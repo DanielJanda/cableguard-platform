@@ -20,8 +20,12 @@ public sealed class ControlCenterConfig
     [JsonPropertyName("whep_base_local")] public string WhepBaseLocal { get; set; } = "http://127.0.0.1:8889";
     [JsonPropertyName("event_core_base_local")] public string EventCoreBaseLocal { get; set; } = "http://127.0.0.1:8000";
     [JsonPropertyName("monitor_base_local")] public string MonitorBaseLocal { get; set; } = "http://127.0.0.1:8080";
-    /// <summary>When true, OPERATIONS starts production monitor (Nitro+Event Core), never Vite dev.</summary>
-    [JsonPropertyName("use_production_monitor")] public bool UseProductionMonitor { get; set; } = true;
+    /// <summary>
+    /// When true, OPERATIONS starts production monitor (Nitro+Event Core on public origin).
+    /// Default false for office/dev: Vite on :8080 + Event Core on :8000.
+    /// Enable only after <c>npm run build:production-lan</c> and matching runtime.
+    /// </summary>
+    [JsonPropertyName("use_production_monitor")] public bool UseProductionMonitor { get; set; } = false;
     [JsonPropertyName("kiosk_path")] public string KioskPath { get; set; } = "/kiosk/zahradky/horni-stanice";
     /// <summary>Optional detector start command; empty = detector NOT CONFIGURED (Phase 3).</summary>
     [JsonPropertyName("detector_start_command")] public string DetectorStartCommand { get; set; } = "";

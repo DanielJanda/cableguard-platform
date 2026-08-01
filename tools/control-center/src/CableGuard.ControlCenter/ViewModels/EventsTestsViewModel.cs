@@ -120,10 +120,11 @@ public sealed class EventsTestsViewModel : ObservableObject
     {
         try
         {
-            var url = $"{_config.EventCoreBaseLocal.TrimEnd('/')}/health";
+            var url = $"{_config.EventCoreBaseLocal.TrimEnd('/')}/api/v1/health";
             using var resp = await _http.GetAsync(url);
-            LastResult = $"Event Core health HTTP {(int)resp.StatusCode} — WS test deep-check in Gate 2.";
-            MessageBox.Show(LastResult, "TEST WEBSOCKET", MessageBoxButton.OK, MessageBoxImage.Information);
+            LastResult = $"Event Core health HTTP {(int)resp.StatusCode} — WS deep-check deferred.";
+            MessageBox.Show(LastResult, "TEST WEBSOCKET", MessageBoxButton.OK,
+                resp.IsSuccessStatusCode ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
