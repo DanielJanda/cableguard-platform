@@ -1,6 +1,23 @@
 # CURRENT_STATE — skutečný stav CableGuard
 
-Last verified: 2026-07-29
+Last verified: 2026-07-30 (office incident clip pipeline / RC1 consolidation)
+
+## Office RC progress (2026-07-30)
+
+| Area | Status |
+|---|---|
+| Multi-camera Monitor layout API | office-tested (PR #35 tip) |
+| PyAV + YOLO pose + BotSORT + fall risk | office-tested (do not change algo) |
+| Rolling recording MediaMTX fMP4 | office-tested |
+| Incident clip from MTX playback (15+30 s) | **office-tested** via Event Core worker |
+| Safe snapshot/clip BFF + Range | **office-tested** |
+| Monitor `/events` filters + player | implemented on `feat/operator-events-release` |
+| Live alarm | **notification-mode** (no mandatory ACK on live) |
+| Control Center START ALL readiness | deferred (P1 / RC1) |
+| 30 min soak formal report | deferred / in progress |
+| Zahrádky on-site | deferred |
+
+See also: `INCIDENT_PIPELINE_RC.md`.
 
 Verified against:
 

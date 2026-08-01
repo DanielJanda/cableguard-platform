@@ -38,8 +38,30 @@ class Settings(BaseSettings):
     kiosk_path: str = "/kiosk/zahradky/horni-stanice"
     cors_origins: str = (
         "http://10.6.1.40:8080,http://localhost:8080,http://127.0.0.1:8080,"
-        "http://127.0.0.1:5173,http://localhost:5173"
+        "http://127.0.0.1:5173,http://localhost:5173,"
+        "http://10.6.1.40:8081,http://localhost:8081,http://127.0.0.1:8081"
     )
+
+    # Incident clip pipeline (MediaMTX playback is localhost-only)
+    incident_pipeline_enabled: bool = True
+    incident_storage_dir: str = "runtime/incidents"
+    mediamtx_playback_base_url: str = "http://127.0.0.1:9996"
+    pre_event_seconds: int = 15
+    post_event_seconds: int = 30
+    clip_duration_tolerance_sec: float = 3.0
+    clip_min_bytes: int = 10_000
+    clip_max_bytes: int = 200_000_000
+    snapshot_jpeg_quality: int = 90
+    snapshot_max_bytes: int = 8_000_000
+    clip_worker_poll_sec: float = 2.0
+    clip_max_attempts: int = 8
+    clip_retry_backoff_sec: float = 5.0
+    ffmpeg_path: str = "ffmpeg"
+    ffprobe_path: str = "ffprobe"
+    warning_free_space_bytes: int = 5_000_000_000
+    critical_free_space_bytes: int = 1_000_000_000
+    max_incident_storage_bytes: int = 50_000_000_000
+    incident_retention_days: int = 30
 
     @property
     def cors_origins_list(self) -> list[str]:

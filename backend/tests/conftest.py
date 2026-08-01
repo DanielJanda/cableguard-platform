@@ -16,6 +16,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[TestCli
     monkeypatch.setenv("CABLEGUARD_KIOSK_API_KEY", "test-kiosk-key")
     monkeypatch.setenv("CABLEGUARD_HEARTBEAT_TIMEOUT_SEC", "1")
     monkeypatch.setenv("CABLEGUARD_DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
+    monkeypatch.setenv("CABLEGUARD_INCIDENT_PIPELINE_ENABLED", "false")
+    monkeypatch.setenv(
+        "CABLEGUARD_INCIDENT_STORAGE_DIR",
+        str((tmp_path / "incidents").as_posix()),
+    )
 
     from app.core.config import get_settings
 

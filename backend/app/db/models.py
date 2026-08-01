@@ -33,10 +33,44 @@ class Event(Base):
     status: Mapped[str] = mapped_column(String(32), default="open", index=True, nullable=False)
     snapshot_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     clip_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    snapshot_status: Mapped[str] = mapped_column(
+        String(32), default="NOT_REQUESTED", nullable=False
+    )
+    clip_status: Mapped[str] = mapped_column(
+        String(32), default="NOT_REQUESTED", nullable=False
+    )
     algorithm_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     model_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     config_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     payload_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class IncidentClipJob(Base):
+    __tablename__ = "incident_clip_jobs"
+    __table_args__ = (UniqueConstraint("event_id", name="uq_incident_clip_jobs_event_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("events.event_id"), index=True, nullable=False, unique=True
+    )
+    camera_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    mediamtx_path: Mapped[str] = mapped_column(String(128), nullable=False)
+    requested_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    requested_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    available_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True, nullable=False)
+    attempts: Mapped[int] = mapped_column(default=0, nullable=False)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    temp_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    final_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    snapshot_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    clip_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    snapshot_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    actual_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class ServiceHealth(Base):
