@@ -36,7 +36,13 @@ Event example: `90db0980-ece9-4fdb-b622-b2cfc36a3040`
 - 30 min soak report (process left running; formal metrics TBD)
 - Full retention worker dry-run UI
 - Zahrádky on-site commissioning
-- Continuous alarm siren until ACK (kept 3 s notification per office preference)
+- Fall episode debounce (threshold flicker can still burst-publish events)
+
+## Operator UX (Monitor tip `feat/operator-events-release`)
+
+- Live path = **notification only** (short banner + coalesced beep, auto-expire / dismiss)
+- **No Event Core ACK required** on live to clear chrome
+- Archive `/events` = video-first history; optional „Označit jako vyhodnocené“
 
 ## Security
 
